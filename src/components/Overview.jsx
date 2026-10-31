@@ -53,7 +53,7 @@ export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, o
           </button>
         </div>
       ) : (
-        <div className="stack pad">
+        <div className="stack pad batch-grid">
           {view.batches.map((v, i) => (
             <button key={v.batch.id} className="card batch-card rise" style={{ '--i': i }} onClick={() => onOpenBatch(v.batch.id)}>
               <div className="top">

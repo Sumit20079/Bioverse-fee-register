@@ -46,7 +46,7 @@ It's one website, so every device uses the same link and the same login, and the
 
 - **Android (Chrome):** open the link → ⋮ menu → **Install app** (or **Add to Home screen**).
 - **iPhone / iPad (Safari):** open the link → Share button → **Add to Home Screen**.
-- **Laptop:** just bookmark it, or in Chrome/Edge use the install icon in the address bar to get a window of its own.
+- **Laptop:** just bookmark it, or in Chrome/Edge use the install icon in the address bar to get a window of its own. On a wide screen the menu moves to a sidebar, students and dues show as tables, and forms open as centred dialogs. Tablets get a slightly wider version of the phone layout.
 
 Once added, it opens full screen like an app. It needs an internet connection to load and save.
 

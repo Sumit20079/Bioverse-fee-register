@@ -211,3 +211,73 @@ button:active:not(:disabled), a.sbtn:active { transform: scale(0.97); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-delay: 0ms !important; transition-duration: 0.001ms !important; }
 }
+
+/* ---------- tables (laptop) ---------- */
+.small { font-size: 12px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.tablewrap { margin: 0 20px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.grid-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.grid-table th { text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); padding: 12px 16px; border-bottom: 1px solid var(--line); background: #fafbfc; }
+.grid-table td { padding: 10px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.grid-table tbody tr:last-child td { border-bottom: 0; }
+.grid-table tbody tr:hover { background: #f8f9fb; }
+.grid-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.grid-table .act { text-align: right; white-space: nowrap; }
+.grid-table .act .sbtn { height: 38px; margin-left: 8px; }
+.grid-table .amt-due { font-weight: 700; color: var(--amber-ink); }
+.name-btn { background: none; border: 0; padding: 0; font-size: 14px; font-weight: 600; text-align: left; }
+.name-btn:hover { color: var(--blue); }
+.status { display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border-radius: 14px; font-size: 13px; font-weight: 700; }
+.status.paid { background: var(--blue-tint); color: var(--blue-ink); }
+.status.due { background: var(--amber-tint); color: var(--amber-ink); }
+.tag { margin-left: 8px; padding: 2px 8px; border-radius: 10px; background: var(--line); color: var(--muted); font-size: 12px; font-weight: 600; }
+
+/* ---------- tablet ---------- */
+@media (min-width: 600px) {
+  .app { max-width: 640px; }
+  .nav, .fabwrap { max-width: 640px; }
+  .sheet { max-width: 560px; }
+}
+
+/* ---------- laptop ---------- */
+@keyframes pop { from { opacity: 0; transform: translateY(14px) scale(0.98); } to { opacity: 1; transform: none; } }
+
+@media (min-width: 900px) {
+  .app { max-width: none; margin: 0 0 0 240px; padding: 0 24px 56px; }
+  .screen { max-width: 1040px; margin: 0 auto; }
+
+  /* the bottom bar becomes a sidebar */
+  .nav {
+    top: 0; bottom: 0; left: 0; transform: none; width: 240px; max-width: none; height: auto;
+    flex-direction: column; justify-content: flex-start; gap: 4px; padding: 24px 16px;
+    border-top: 0; border-right: 1px solid var(--line);
+  }
+  .nav::before { content: 'Fee Register'; padding: 4px 14px 20px; font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .nav button { flex: none; flex-direction: row; justify-content: flex-start; gap: 12px; height: 46px; padding: 0 14px; border-radius: 12px; font-size: 15px; }
+  .nav button.on { background: var(--blue-tint); }
+  .nav button:hover:not(.on) { background: #f1f3f6; }
+  .nav .badge { position: static; margin: 0 0 0 auto; }
+
+  .fabwrap { left: 240px; transform: none; width: calc(100% - 240px); max-width: none; bottom: 32px; padding: 0 40px; }
+  .toast { bottom: 32px; left: calc(50% + 120px); }
+
+  .head { padding-top: 36px; }
+  .head h1 { font-size: 30px; }
+  .hero { padding: 28px; margin-top: 16px; }
+  .hero .big { font-size: 52px; }
+  .hero .donut { width: 150px !important; height: 150px !important; }
+  .donut-label b { font-size: 30px; }
+  .batch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+  .tools { flex-direction: row; flex-wrap: wrap; }
+  .tool { width: auto; flex: 1 1 220px; }
+  .tool:hover, .chip:hover:not(.on) { border-color: var(--field); }
+  .summary { max-width: 420px; }
+  .list { margin-inline: 20px; }
+  .batch-card:hover { transform: translateY(-2px); }
+
+  /* dialogs float in the middle instead of rising from the bottom */
+  .scrim { align-items: center; }
+  .sheet { max-width: 460px; border-radius: 20px; padding: 24px; animation-name: pop; }
+  .grab { display: none; }
+  .report { max-width: 900px; }
+}

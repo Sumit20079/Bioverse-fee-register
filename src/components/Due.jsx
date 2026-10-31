@@ -3,11 +3,38 @@ import MonthNav from './MonthNav';
 import { Icon } from './Icons';
 import { monthLabel, monthsText } from '../lib/dates';
 import { reminderText, rupees, telLink, waLink } from '../lib/format';
+import { useWide } from '../lib/useWide';
 
 export default function Due({ list, batches, month, setMonth, onPay }) {
   const [batchId, setBatchId] = useState('all');
+  const wide = useWide();
   const shown = useMemo(() => list.filter((d) => batchId === 'all' || d.batch.id === batchId), [list, batchId]);
   const total = shown.reduce((t, d) => t + d.amount, 0);
+
+  // One entry per student with everything either layout needs.
+  const items = shown.map((d) => {
+    const label = monthsText(d.months);
+    return {
+      d,
+      label,
+      wa: waLink(d.student.phone, reminderText({ name: d.student.name, amount: d.amount, monthsLabel: label, batchName: d.batch.name })),
+      tel: telLink(d.student.phone),
+    };
+  });
+
+  const actions = ({ d, wa, tel }, compact) => (
+    <>
+      <button className="sbtn primary" onClick={() => onPay(d.student, d.months[0])}>
+        <Icon.Check width={18} height={18} /> Mark paid
+      </button>
+      <a className="sbtn" href={wa || undefined} target="_blank" rel="noreferrer" aria-disabled={!wa} aria-label={`WhatsApp reminder to ${d.student.name}`}>
+        <Icon.Chat width={18} height={18} /> WhatsApp
+      </a>
+      <a className="sbtn" href={tel || undefined} aria-disabled={!tel} aria-label={`Call ${d.student.name}`} style={compact ? { flex: '0 0 44px', padding: 0 } : undefined}>
+        <Icon.Phone width={18} height={18} />
+      </a>
+    </>
+  );
 
   return (
     <>
@@ -42,42 +69,57 @@ export default function Due({ list, batches, month, setMonth, onPay }) {
         </div>
       )}
 
-      {shown.length === 0 ? (
+      {items.length === 0 ? (
         <div className="card empty" style={{ marginInline: 20, marginTop: 12 }}>
           <p>Everyone is paid up. Nothing to chase.</p>
         </div>
+      ) : wide ? (
+        <div className="tablewrap" style={{ marginTop: batches.length > 1 ? 0 : 14 }}>
+          <table className="grid-table">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Batch</th>
+                <th>Months owed</th>
+                <th className="num">Amount due</th>
+                <th>
+                  <span className="sr">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((it, i) => (
+                <tr key={it.d.student.id} className="rise" style={{ '--i': i }}>
+                  <td>
+                    <b>{it.d.student.name}</b>
+                    <div className="muted small">{it.d.student.phone || 'No phone'}</div>
+                  </td>
+                  <td className="muted">{it.d.batch.name}</td>
+                  <td>{it.label}</td>
+                  <td className="num amt-due">{rupees(it.d.amount)}</td>
+                  <td className="act">{actions(it, false)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <div className="list" style={{ marginTop: batches.length > 1 ? 0 : 14 }}>
-          {shown.map((d, i) => {
-            const label = monthsText(d.months);
-            const wa = waLink(d.student.phone, reminderText({ name: d.student.name, amount: d.amount, monthsLabel: label, batchName: d.batch.name }));
-            const tel = telLink(d.student.phone);
-            return (
-              <div className="due-row rise" style={{ '--i': i }} key={d.student.id}>
-                <div className="top">
-                  <div>
-                    <div style={{ fontSize: 15, fontWeight: 600 }}>{d.student.name}</div>
-                    <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>{d.batch.name}</div>
-                  </div>
-                  <div className="amt">
-                    <b>{rupees(d.amount)}</b>
-                    <span>{label}</span>
-                  </div>
+          {items.map((it, i) => (
+            <div className="due-row rise" style={{ '--i': i }} key={it.d.student.id}>
+              <div className="top">
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 600 }}>{it.d.student.name}</div>
+                  <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>{it.d.batch.name}</div>
                 </div>
-                <div className="due-actions">
-                  <button className="sbtn primary" onClick={() => onPay(d.student, d.months[0])}>
-                    <Icon.Check width={18} height={18} /> Mark paid
-                  </button>
-                  <a className="sbtn" href={wa || undefined} target="_blank" rel="noreferrer" aria-disabled={!wa} aria-label={`WhatsApp reminder to ${d.student.name}`}>
-                    <Icon.Chat width={18} height={18} /> WhatsApp
-                  </a>
-                  <a className="sbtn" href={tel || undefined} aria-disabled={!tel} aria-label={`Call ${d.student.name}`} style={{ flex: '0 0 44px', padding: 0 }}>
-                    <Icon.Phone width={18} height={18} />
-                  </a>
+                <div className="amt">
+                  <b>{rupees(it.d.amount)}</b>
+                  <span>{it.label}</span>
                 </div>
               </div>
-            );
-          })}
+              <div className="due-actions">{actions(it, true)}</div>
+            </div>
+          ))}
         </div>
       )}
     </>

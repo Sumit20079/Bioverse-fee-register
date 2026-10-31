@@ -3,9 +3,11 @@ import MonthNav from './MonthNav';
 import { Icon } from './Icons';
 import { dateLabel, monthShort } from '../lib/dates';
 import { rupees } from '../lib/format';
+import { useWide } from '../lib/useWide';
 
 export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditStudent, onEditBatch, onAddStudent }) {
   const [filter, setFilter] = useState('all');
+  const wide = useWide();
   const { batch } = v;
   const rows = v.rows.filter((r) => (filter === 'paid' ? r.payment : filter === 'due' ? !r.payment : true));
 
@@ -60,6 +62,57 @@ export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditS
               <Icon.Plus /> Add student
             </button>
           )}
+        </div>
+      ) : wide ? (
+        <div className="tablewrap">
+          <table className="grid-table">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Phone</th>
+                <th>Status</th>
+                <th className="num">Amount</th>
+                <th>Paid on</th>
+                <th>Note</th>
+                <th>
+                  <span className="sr">Action</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(({ student, payment }, i) => (
+                <tr key={student.id} className="rise" style={{ '--i': i }}>
+                  <td>
+                    <button className="name-btn" onClick={() => onEditStudent(student)} aria-label={`Edit ${student.name}`}>
+                      {student.name}
+                    </button>
+                    {!student.active && <span className="tag">Left</span>}
+                  </td>
+                  <td className="muted">{student.phone || '–'}</td>
+                  <td>
+                    <span className={'status ' + (payment ? 'paid' : 'due')}>{payment ? 'Paid' : 'Due'}</span>
+                  </td>
+                  <td className="num">
+                    {payment ? rupees(payment.amount) : '–'}
+                    {payment && payment.amount < batch.fee && <div className="muted small">of {rupees(batch.fee)}</div>}
+                  </td>
+                  <td>{payment ? dateLabel(payment.paid_on) : '–'}</td>
+                  <td className="muted">{payment?.note || ''}</td>
+                  <td className="act">
+                    {payment ? (
+                      <button className="sbtn" onClick={() => onPay(student, month)} aria-label={`Edit payment for ${student.name}`}>
+                        Edit
+                      </button>
+                    ) : (
+                      <button className="sbtn primary" onClick={() => onPay(student, month)}>
+                        Mark paid
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       ) : (
         <div className="list">
