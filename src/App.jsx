@@ -232,6 +232,14 @@ function Register() {
       <BatchSheet
         batch={sheet.batch}
         studentCount={sheet.batch ? data.students.filter((s) => s.batch_id === sheet.batch.id).length : 0}
+        paymentCount={
+          sheet.batch
+            ? (() => {
+                const ids = new Set(data.students.filter((s) => s.batch_id === sheet.batch.id).map((s) => s.id));
+                return data.payments.filter((p) => ids.has(p.student_id)).length;
+              })()
+            : 0
+        }
         onClose={close}
         onSave={(b) => closeAfter(act(() => backend.saveBatch(b), b.id ? 'Batch updated' : 'Batch created'))}
         onDelete={(id) =>

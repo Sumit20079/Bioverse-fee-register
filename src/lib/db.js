@@ -78,8 +78,11 @@ const remote = {
   async removePayment(id) {
     check(await supabase.from('payments').delete().eq('id', id));
   },
-  // The database refuses to delete a batch that still has students (on delete restrict).
+  // The database won't drop a batch that still has students (on delete restrict), so remove the
+  // students first. Their payments go with them (on delete cascade). If the second step fails the
+  // students are already gone, and retrying the delete finishes the job.
   async deleteBatch(id) {
+    check(await supabase.from('students').delete().eq('batch_id', id));
     check(await supabase.from('batches').delete().eq('id', id));
   },
   // Deleting a student also deletes their payments (on delete cascade).
@@ -191,7 +194,9 @@ const demo = {
   },
   async deleteBatch(id) {
     const d = readDemo();
-    if (d.students.some((s) => s.batch_id === id)) throw new Error('This batch still has students.');
+    const gone = new Set(d.students.filter((s) => s.batch_id === id).map((s) => s.id));
+    d.payments = d.payments.filter((p) => !gone.has(p.student_id));
+    d.students = d.students.filter((s) => s.batch_id !== id);
     d.batches = d.batches.filter((b) => b.id !== id);
     writeDemo(d);
   },

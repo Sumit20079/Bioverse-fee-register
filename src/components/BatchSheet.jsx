@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Sheet from './Sheet';
 
-export default function BatchSheet({ batch, studentCount = 0, onSave, onDelete, onClose }) {
+export default function BatchSheet({ batch, studentCount = 0, paymentCount = 0, onSave, onDelete, onClose }) {
   const editing = Boolean(batch);
   const [name, setName] = useState(batch?.name || '');
   const [fee, setFee] = useState(batch ? String(batch.fee) : '');
@@ -27,10 +27,17 @@ export default function BatchSheet({ batch, studentCount = 0, onSave, onDelete, 
     return (
       <Sheet title="Delete this batch?" onClose={onClose}>
         <p role="alert">
-          <b>{batch.name}</b> will be removed. This can&apos;t be undone.
+          <b>{batch.name}</b> will be removed
+          {studentCount > 0
+            ? `, along with its ${studentCount} student${studentCount === 1 ? '' : 's'} and ${paymentCount} payment record${paymentCount === 1 ? '' : 's'}`
+            : ''}
+          . This can&apos;t be undone.
         </p>
+        {studentCount > 0 && (
+          <p className="hint">Only want to stop a class? Cancel, open each student and untick “Still attending” to keep their history.</p>
+        )}
         <button className="btn" style={{ background: 'var(--danger)' }} disabled={busy} onClick={remove}>
-          Yes, delete batch
+          {studentCount > 0 ? `Yes, delete batch and ${studentCount} student${studentCount === 1 ? '' : 's'}` : 'Yes, delete batch'}
         </button>
         <button className="btn secondary" disabled={busy} onClick={() => setConfirming(false)}>
           Cancel
@@ -55,16 +62,9 @@ export default function BatchSheet({ batch, studentCount = 0, onSave, onDelete, 
       </form>
 
       {editing && (
-        <div className="stack" style={{ gap: 8 }}>
-          <button type="button" className="btn danger" disabled={studentCount > 0 || busy} onClick={() => setConfirming(true)}>
-            Delete batch
-          </button>
-          {studentCount > 0 && (
-            <p className="hint">
-              Can&apos;t delete while it has {studentCount} student{studentCount === 1 ? '' : 's'}. Move them to another batch or delete them first.
-            </p>
-          )}
-        </div>
+        <button type="button" className="btn danger" disabled={busy} onClick={() => setConfirming(true)}>
+          Delete batch
+        </button>
       )}
     </Sheet>
   );
