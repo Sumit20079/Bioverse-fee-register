@@ -51,7 +51,15 @@ h1, h2, p { margin: 0; }
 /* hero */
 .hero { margin: 12px 20px 0; padding: 20px; border-radius: 20px; background: var(--blue); color: #fff; display: flex; flex-direction: column; gap: 14px; }
 .hero .label { font-size: 13px; font-weight: 500; color: #dce5fb; }
-.hero .big { font-size: 40px; font-weight: 700; letter-spacing: -1px; line-height: 1.1; }
+.hero-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.hero .big { font-size: 40px; font-weight: 700; letter-spacing: -1px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.donut { position: relative; flex: none; }
+.donut svg { display: block; width: 100%; height: 100%; }
+.donut-track { stroke: rgba(8, 26, 96, 0.4); }
+.donut-fill { stroke: #fff; }
+.donut-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.15; }
+.donut-label b { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+.donut-label span { font-size: 11px; color: #dce5fb; }
 .hero .sub { font-size: 14px; color: #dce5fb; }
 .hero .bar { height: 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.28); overflow: hidden; }
 .hero .bar > i { display: block; height: 100%; border-radius: 999px; background: #fff; }
@@ -172,4 +180,34 @@ h1, h2, p { margin: 0; }
   .report-overlay { position: static !important; overflow: visible !important; }
   .print-area { position: absolute; left: 0; top: 0; width: 100%; }
   .no-print { display: none !important; }
+}
+
+/* ---------- motion ---------- */
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes slideup { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes sweep { from { stroke-dasharray: 0 var(--c); } }
+@keyframes toastin { from { opacity: 0; transform: translate(-50%, 14px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* 'backwards' keeps the start pose during the delay, then hands control back so hover/press still work */
+.screen { animation: fade 0.25s ease backwards; }
+.rise { animation: rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; animation-delay: calc(min(var(--i, 0), 8) * 45ms); }
+.hero { animation: rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+.scrim { animation: fade 0.2s ease backwards; }
+.sheet { animation: slideup 0.34s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+.toast { animation: toastin 0.25s ease backwards; }
+.progress > i { transform-origin: left; animation: grow 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s backwards; }
+.donut-fill { animation: sweep 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) 0.1s backwards; transition: stroke-dasharray 0.9s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.fab { animation: rise 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s backwards; }
+
+button, .sbtn, .pill, .chip, .tool, .iconbtn, .fab, .batch-card, .nav button {
+  transition: transform 0.12s ease, background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, opacity 0.18s ease, box-shadow 0.2s ease;
+}
+button:active:not(:disabled), a.sbtn:active { transform: scale(0.97); }
+.batch-card:hover { box-shadow: 0 6px 18px rgba(20, 24, 31, 0.08); }
+.row .who:active { opacity: 0.6; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-delay: 0ms !important; transition-duration: 0.001ms !important; }
 }

@@ -40,6 +40,21 @@ npm run dev
 
 The anon key is safe to ship in the browser because row-level security (in `schema.sql`) blocks access without a login.
 
+## Using it on phone, tablet and laptop
+
+It's one website, so every device uses the same link and the same login, and the data is shared through Supabase. Change something on the phone and it shows on the laptop after a refresh.
+
+- **Android (Chrome):** open the link → ⋮ menu → **Install app** (or **Add to Home screen**).
+- **iPhone / iPad (Safari):** open the link → Share button → **Add to Home Screen**.
+- **Laptop:** just bookmark it, or in Chrome/Edge use the install icon in the address bar to get a window of its own.
+
+Once added, it opens full screen like an app. It needs an internet connection to load and save.
+
+## Deleting things
+
+- **Student:** tap the name → **Delete student**. This also deletes that student's payment records, so if they simply left, untick **Still attending** instead and the history stays.
+- **Batch:** tap the pencil on the Batches tab → **Delete batch**. A batch can only be deleted when it has no students left, so a whole class can't vanish with one tap.
+
 ## How the fee logic works
 
 - A **batch** has a monthly fee. Students belong to one batch.

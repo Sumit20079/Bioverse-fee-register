@@ -21,8 +21,8 @@ export default function Batches({ view, onOpenBatch, onEditBatch, onNewBatch }) 
         </div>
       ) : (
         <div className="list" style={{ marginTop: 12 }}>
-          {view.batches.map((v) => (
-            <div className="row" key={v.batch.id}>
+          {view.batches.map((v, i) => (
+            <div className="row rise" style={{ '--i': i }} key={v.batch.id}>
               <button className="who" style={{ flex: 1 }} onClick={() => onOpenBatch(v.batch.id)}>
                 <div className="n">{v.batch.name}</div>
                 <div className="d">

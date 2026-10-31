@@ -1,10 +1,12 @@
 import MonthNav from './MonthNav';
+import Donut from './Donut';
 import { Icon } from './Icons';
 import { monthLabel } from '../lib/dates';
 import { rupees } from '../lib/format';
+import { useCountUp } from '../lib/useCountUp';
 
 export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, onNewBatch, onImport, onReport, onSignOut }) {
-  const pct = view.expected > 0 ? Math.min(100, Math.round((view.collected / view.expected) * 100)) : 0;
+  const shownCollected = useCountUp(view.collected);
 
   return (
     <>
@@ -23,13 +25,13 @@ export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, o
       )}
 
       <section className="hero">
-        <div>
-          <div className="label">Collected this month</div>
-          <div className="big">{rupees(view.collected)}</div>
-          <div className="sub">of {rupees(view.expected)} expected</div>
-        </div>
-        <div className="bar" role="img" aria-label={`${pct}% collected`}>
-          <i style={{ width: `${pct}%` }} />
+        <div className="hero-top">
+          <div>
+            <div className="label">Collected this month</div>
+            <div className="big">{rupees(shownCollected)}</div>
+            <div className="sub">of {rupees(view.expected)} expected</div>
+          </div>
+          <Donut collected={view.collected} pending={view.pending} />
         </div>
         <div className="stats">
           <span>{view.paidCount} paid</span>
@@ -52,8 +54,8 @@ export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, o
         </div>
       ) : (
         <div className="stack pad">
-          {view.batches.map((v) => (
-            <button key={v.batch.id} className="card batch-card" onClick={() => onOpenBatch(v.batch.id)}>
+          {view.batches.map((v, i) => (
+            <button key={v.batch.id} className="card batch-card rise" style={{ '--i': i }} onClick={() => onOpenBatch(v.batch.id)}>
               <div className="top">
                 <div>
                   <div className="name">{v.batch.name}</div>

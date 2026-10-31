@@ -78,6 +78,14 @@ const remote = {
   async removePayment(id) {
     check(await supabase.from('payments').delete().eq('id', id));
   },
+  // The database refuses to delete a batch that still has students (on delete restrict).
+  async deleteBatch(id) {
+    check(await supabase.from('batches').delete().eq('id', id));
+  },
+  // Deleting a student also deletes their payments (on delete cascade).
+  async deleteStudent(id) {
+    check(await supabase.from('students').delete().eq('id', id));
+  },
 };
 
 /* ---------- Demo backend (localStorage) ---------- */
@@ -179,6 +187,18 @@ const demo = {
   async removePayment(id) {
     const d = readDemo();
     d.payments = d.payments.filter((x) => x.id !== id);
+    writeDemo(d);
+  },
+  async deleteBatch(id) {
+    const d = readDemo();
+    if (d.students.some((s) => s.batch_id === id)) throw new Error('This batch still has students.');
+    d.batches = d.batches.filter((b) => b.id !== id);
+    writeDemo(d);
+  },
+  async deleteStudent(id) {
+    const d = readDemo();
+    d.students = d.students.filter((s) => s.id !== id);
+    d.payments = d.payments.filter((p) => p.student_id !== id);
     writeDemo(d);
   },
 };

@@ -63,8 +63,8 @@ export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditS
         </div>
       ) : (
         <div className="list">
-          {rows.map(({ student, payment }) => (
-            <div className="row" key={student.id}>
+          {rows.map(({ student, payment }, i) => (
+            <div className="row rise" style={{ '--i': i }} key={student.id}>
               <button className="who" onClick={() => onEditStudent(student)} aria-label={`Edit ${student.name}`}>
                 <div className="n">{student.name}</div>
                 <div className="d">

@@ -60,20 +60,40 @@ function Register() {
   }, [reload]);
 
   // Run a write, refresh, and report. Returns true when it worked.
+  // Writes run one at a time, in order, so a quick second tap can't be overwritten by the
+  // refresh from the first. A failed write reloads from the server, undoing any instant change.
+  const queue = useRef(Promise.resolve());
   const act = useCallback(
-    async (fn, okMsg) => {
-      try {
-        await fn();
-        await reload();
-        if (okMsg) flash(okMsg);
-        return true;
-      } catch (e) {
-        flash('Could not save: ' + (e.message || e));
-        return false;
-      }
+    (fn, okMsg) => {
+      const run = queue.current.then(async () => {
+        try {
+          await fn();
+          await reload();
+          if (okMsg) flash(okMsg);
+          return true;
+        } catch (e) {
+          flash('Could not save: ' + (e.message || e));
+          await reload();
+          return false;
+        }
+      });
+      queue.current = run;
+      return run;
     },
     [reload, flash],
   );
+
+  // Show a payment change on screen straight away; the server catches up behind it.
+  const showPayment = useCallback((p) => {
+    setData((d) => {
+      const prev = d.payments.find((x) => x.student_id === p.student_id && x.month === p.month);
+      const rest = d.payments.filter((x) => x !== prev);
+      return { ...d, payments: [...rest, { ...prev, id: prev?.id ?? `pending-${Date.now()}`, ...p }] };
+    });
+  }, []);
+  const hidePayment = useCallback((id) => {
+    setData((d) => ({ ...d, payments: d.payments.filter((x) => x.id !== id) }));
+  }, []);
 
   const view = useMemo(() => (data ? monthView(data, month) : null), [data, month]);
   const dues = useMemo(() => (data ? dueList(data, month) : []), [data, month]);
@@ -179,8 +199,18 @@ function Register() {
           monthOptions={[...options].sort()}
           paidMap={paidMap}
           onClose={close}
-          onSave={(p) => closeAfter(act(() => backend.savePayment(p), 'Payment saved'))}
-          onRemove={(id) => closeAfter(act(() => backend.removePayment(id), 'Marked as unpaid'))}
+          onSave={(p) => {
+            showPayment(p);
+            close();
+            act(() => backend.savePayment(p), 'Payment saved');
+            return Promise.resolve(true);
+          }}
+          onRemove={(id) => {
+            hidePayment(id);
+            close();
+            act(() => backend.removePayment(id), 'Marked as unpaid');
+            return Promise.resolve(true);
+          }}
         />
       );
     }
@@ -191,16 +221,25 @@ function Register() {
         batches={data.batches}
         defaultBatchId={sheet.defaultBatchId}
         month={month}
+        paymentCount={sheet.student ? data.payments.filter((p) => p.student_id === sheet.student.id).length : 0}
         onClose={close}
         onSave={(s) => closeAfter(act(() => backend.saveStudent(s), s.id ? 'Student updated' : 'Student added'))}
+        onDelete={(id) => closeAfter(act(() => backend.deleteStudent(id), 'Student deleted'))}
       />
     );
   } else if (sheet?.type === 'batch') {
     sheetEl = (
       <BatchSheet
         batch={sheet.batch}
+        studentCount={sheet.batch ? data.students.filter((s) => s.batch_id === sheet.batch.id).length : 0}
         onClose={close}
         onSave={(b) => closeAfter(act(() => backend.saveBatch(b), b.id ? 'Batch updated' : 'Batch created'))}
+        onDelete={(id) =>
+          closeAfter(act(() => backend.deleteBatch(id), 'Batch deleted')).then((ok) => {
+            if (ok && batchId === id) setBatchId(null);
+            return ok;
+          })
+        }
       />
     );
   } else if (sheet?.type === 'import') {
@@ -217,7 +256,9 @@ function Register() {
 
   return (
     <div className="app">
-      {body}
+      <div className="screen" key={`${tab}-${batchId || ''}`}>
+        {body}
+      </div>
 
       <nav className="nav" aria-label="Main">
         <button className={tab === 'overview' && !batchId ? 'on' : ''} onClick={() => goTab('overview')}>

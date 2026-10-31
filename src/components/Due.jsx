@@ -48,12 +48,12 @@ export default function Due({ list, batches, month, setMonth, onPay }) {
         </div>
       ) : (
         <div className="list" style={{ marginTop: batches.length > 1 ? 0 : 14 }}>
-          {shown.map((d) => {
+          {shown.map((d, i) => {
             const label = monthsText(d.months);
             const wa = waLink(d.student.phone, reminderText({ name: d.student.name, amount: d.amount, monthsLabel: label, batchName: d.batch.name }));
             const tel = telLink(d.student.phone);
             return (
-              <div className="due-row" key={d.student.id}>
+              <div className="due-row rise" style={{ '--i': i }} key={d.student.id}>
                 <div className="top">
                   <div>
                     <div style={{ fontSize: 15, fontWeight: 600 }}>{d.student.name}</div>
