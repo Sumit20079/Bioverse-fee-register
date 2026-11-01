@@ -28,12 +28,14 @@ create table public.payments (
   amount     integer not null check (amount >= 0),
   paid_on    date not null default current_date,
   note       text not null default '',
-  created_at timestamptz not null default now(),
-  unique (student_id, month)
+  -- true once the month is fully dealt with: paid in full, or the rest was waived (a discount)
+  settled    boolean not null default true,
+  created_at timestamptz not null default now()
 );
 
 create index students_batch_idx on public.students (batch_id);
 create index payments_month_idx on public.payments (month);
+create index payments_student_month_idx on public.payments (student_id, month);
 
 -- Each logged-in teacher can only see and change their own rows.
 alter table public.batches  enable row level security;

@@ -68,16 +68,15 @@ const remote = {
   async addStudents(list) {
     check(await supabase.from('students').insert(list.map(studentRow)));
   },
+  // A month can have several payments. With an id this edits that one; without, it adds a new one.
   async savePayment(p) {
-    check(
-      await supabase.from('payments').upsert(
-        { student_id: p.student_id, month: asDate(p.month), amount: p.amount, paid_on: p.paid_on, note: p.note || '' },
-        { onConflict: 'student_id,month' },
-      ),
-    );
+    const row = { student_id: p.student_id, month: asDate(p.month), amount: p.amount, paid_on: p.paid_on, note: p.note || '', settled: p.settled ?? true };
+    check(p.id ? await supabase.from('payments').update(row).eq('id', p.id) : await supabase.from('payments').insert(row));
   },
-  async removePayment(id) {
-    check(await supabase.from('payments').delete().eq('id', id));
+  async removePayments(ids) {
+    for (let i = 0; i < ids.length; i += 100) {
+      check(await supabase.from('payments').delete().in('id', ids.slice(i, i + 100)));
+    }
   },
   // The database won't drop a batch that still has students (on delete restrict), so remove the
   // students first. Their payments go with them (on delete cascade). If the second step fails the
@@ -142,6 +141,7 @@ function seed() {
     pay(students[1], now, 2000, day(1)),
     pay(students[3], prev, 2000, `${prev}-07`),
     pay(students[3], now, 1800, day(1), 'sibling discount'),
+    { ...pay(students[4], now, 1000, day(1), 'part payment'), settled: false },
     pay(students[5], prev, 1500, `${prev}-05`),
     pay(students[6], prev, 1500, `${prev}-05`),
     pay(students[6], now, 1500, day(1)),
@@ -196,15 +196,16 @@ const demo = {
   },
   async savePayment(p) {
     const d = readDemo();
-    const row = { student_id: p.student_id, month: p.month, amount: p.amount, paid_on: p.paid_on, note: p.note || '' };
-    const i = d.payments.findIndex((x) => x.student_id === p.student_id && x.month === p.month);
+    const row = { student_id: p.student_id, month: p.month, amount: p.amount, paid_on: p.paid_on, note: p.note || '', settled: p.settled ?? true };
+    const i = p.id ? d.payments.findIndex((x) => x.id === p.id) : -1;
     if (i >= 0) d.payments[i] = { ...d.payments[i], ...row };
     else d.payments.push({ id: uid(), ...row });
     writeDemo(d);
   },
-  async removePayment(id) {
+  async removePayments(ids) {
+    const gone = new Set(ids);
     const d = readDemo();
-    d.payments = d.payments.filter((x) => x.id !== id);
+    d.payments = d.payments.filter((x) => !gone.has(x.id));
     writeDemo(d);
   },
   async deleteBatch(id) {

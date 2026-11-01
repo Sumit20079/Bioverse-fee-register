@@ -31,12 +31,14 @@ export const receiptContact = (s) => {
   return all.find((c) => c.to === 'parent') || all[0] || null;
 };
 
-export function receiptText({ name, amount, monthLabel, batchName, paidOn, to = 'student' }) {
+export function receiptText({ name, amount, monthLabel, batchName, paidOn, balance = 0, to = 'student' }) {
   const who = to === 'parent' ? `for ${name} ` : '';
   const hello = to === 'parent' ? 'Hello' : `Hello ${name}`;
   return (
     `${hello}, we have received the tuition fee of ${rupees(amount)} ${who}` +
-    `(${batchName}) for ${monthLabel}${paidOn ? ` on ${paidOn}` : ''}. Thank you!`
+    `(${batchName}) for ${monthLabel}${paidOn ? ` on ${paidOn}` : ''}.` +
+    (balance > 0 ? ` Balance remaining: ${rupees(balance)}.` : '') +
+    ` Thank you!`
   );
 }
 

@@ -19,7 +19,7 @@ export default function Due({ list, batches, month, setMonth, onPay }) {
       wa: waLink(c.phone, reminderText({ name: d.student.name, amount: d.amount, monthsLabel: label, batchName: d.batch.name, to: c.to })),
       tel: telLink(c.phone),
     }));
-    return { d, label, contacts };
+    return { d, label, shown: label + (d.partial ? ' · part paid' : ''), contacts };
   });
 
   const payBtn = ({ d }) => (
@@ -123,7 +123,7 @@ export default function Due({ list, batches, month, setMonth, onPay }) {
                     </div>
                   </td>
                   <td className="muted">{it.d.batch.name}</td>
-                  <td>{it.label}</td>
+                  <td>{it.shown}</td>
                   <td className="num amt-due">{rupees(it.d.amount)}</td>
                   <td className="act">{tableActions(it)}</td>
                 </tr>
@@ -142,7 +142,7 @@ export default function Due({ list, batches, month, setMonth, onPay }) {
                 </div>
                 <div className="amt">
                   <b>{rupees(it.d.amount)}</b>
-                  <span>{it.label}</span>
+                  <span>{it.shown}</span>
                 </div>
               </div>
               {cardActions(it)}

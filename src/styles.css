@@ -324,3 +324,10 @@ button:active:not(:disabled), a.sbtn:active { transform: scale(0.97); }
 .toast a { color: #fff; font-weight: 700; text-decoration: underline; white-space: nowrap; }
 .toast span { white-space: nowrap; }
 a.btn { display: flex; align-items: center; justify-content: center; text-align: center; text-decoration: none; }
+.instal { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.instal-sum { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; font-size: 14px; background: var(--bg); }
+.instal-sum b.left { color: var(--amber-ink); }
+.instal-sum b.ok { color: var(--blue-ink); }
+.instal-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; border: 0; border-top: 1px solid var(--line); background: #fff; font-size: 14px; text-align: left; }
+.instal-row.on { background: var(--blue-tint); font-weight: 600; }
+.instal-row:disabled { opacity: 0.5; }

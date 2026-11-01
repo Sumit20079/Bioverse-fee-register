@@ -4,17 +4,18 @@ import { download, rupees, toCsv } from '../lib/format';
 
 export default function Report({ view, month, onClose }) {
   function exportCsv() {
-    const rows = [['Batch', 'Student', 'Student phone', 'Parent phone', 'Month', 'Status', 'Amount received', 'Date paid', 'Note']];
+    const rows = [['Batch', 'Student', 'Student phone', 'Parent phone', 'Month', 'Status', 'Amount received', 'Balance due', 'Date paid', 'Note']];
     for (const v of view.batches) {
-      for (const { student, payment } of v.rows) {
+      for (const { student, payment, status, balance } of v.rows) {
         rows.push([
           v.batch.name,
           student.name,
           student.phone,
           student.parent_phone || '',
           month,
-          payment ? 'Paid' : 'Due',
+          status === 'paid' ? 'Paid' : status === 'part' ? 'Part paid' : 'Due',
           payment ? payment.amount : '',
+          balance || '',
           payment ? payment.paid_on : '',
           payment ? payment.note : '',
         ]);
@@ -59,10 +60,10 @@ export default function Report({ view, month, onClose }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {v.rows.map(({ student, payment }) => (
+                  {v.rows.map(({ student, payment, status, balance }) => (
                     <tr key={student.id}>
                       <td>{student.name}</td>
-                      <td>{payment ? 'Paid' : 'Due'}</td>
+                      <td>{status === 'paid' ? 'Paid' : status === 'part' ? `Part (${rupees(balance)} left)` : 'Due'}</td>
                       <td>{payment ? dateLabel(payment.paid_on) : '–'}</td>
                       <td className="num">{payment ? rupees(payment.amount) : '–'}</td>
                     </tr>

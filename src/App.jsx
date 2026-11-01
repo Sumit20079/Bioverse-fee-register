@@ -119,13 +119,12 @@ function Register() {
   // Show a payment change on screen straight away; the server catches up behind it.
   const showPayment = useCallback((p) => {
     setData((d) => {
-      const prev = d.payments.find((x) => x.student_id === p.student_id && x.month === p.month);
-      const rest = d.payments.filter((x) => x !== prev);
-      return { ...d, payments: [...rest, { ...prev, id: prev?.id ?? `pending-${Date.now()}`, ...p }] };
+      if (p.id) return { ...d, payments: d.payments.map((x) => (x.id === p.id ? { ...x, ...p } : x)) };
+      return { ...d, payments: [...d.payments, { ...p, id: `pending-${Date.now()}` }] };
     });
   }, []);
-  const hidePayment = useCallback((id) => {
-    setData((d) => ({ ...d, payments: d.payments.filter((x) => x.id !== id) }));
+  const hidePayments = useCallback((ids) => {
+    setData((d) => ({ ...d, payments: d.payments.filter((x) => !ids.includes(x.id)) }));
   }, []);
 
   const view = useMemo(() => (data ? monthView(data, month) : null), [data, month]);
@@ -161,12 +160,12 @@ function Register() {
     setSheet({ type: 'pay', studentId: student.id, month: forMonth, fromHistory });
   // Closing a payment opened from a student's history goes back to that history.
   const closePay = () => (sheet?.fromHistory ? setSheet({ type: 'history', studentId: sheet.studentId }) : close());
-  const receiptAction = (student, batch, p) => {
+  const receiptAction = (student, batch, p, balance = 0) => {
     const c = receiptContact(student);
     if (!c) return undefined;
     const href = waLink(
       c.phone,
-      receiptText({ name: student.name, amount: p.amount, monthLabel: monthLabel(p.month), batchName: batch.name, paidOn: longDateLabel(p.paid_on), to: c.to }),
+      receiptText({ name: student.name, amount: p.amount, monthLabel: monthLabel(p.month), batchName: batch.name, paidOn: longDateLabel(p.paid_on), balance, to: c.to }),
     );
     return href ? { label: `Send receipt to ${c.role.toLowerCase()}`, href } : undefined;
   };
@@ -242,30 +241,38 @@ function Register() {
     const student = data.students.find((s) => s.id === sheet.studentId);
     const batch = student && data.batches.find((b) => b.id === student.batch_id);
     if (student && batch) {
-      const paidMap = new Map(data.payments.filter((p) => p.student_id === student.id).map((p) => [p.month, p]));
+      const byMonth = new Map();
+      for (const p of data.payments) {
+        if (p.student_id !== student.id) continue;
+        if (!byMonth.has(p.month)) byMonth.set(p.month, []);
+        byMonth.get(p.month).push(p);
+      }
       const options = new Set(monthsBetween(student.joined_month, currentMonth()));
       options.add(sheet.month);
-      paidMap.forEach((_p, m) => options.add(m));
+      byMonth.forEach((_p, m) => options.add(m));
       sheetEl = (
         <PaymentSheet
           student={student}
           batch={batch}
           month={sheet.month}
           monthOptions={[...options].sort()}
-          paidMap={paidMap}
+          paymentsByMonth={byMonth}
           onClose={closePay}
           onSave={(p) => {
             showPayment(p);
             closePay();
+            const others = (byMonth.get(p.month) || []).filter((x) => x.id !== p.id).reduce((t, x) => t + x.amount, 0);
+            const balance = p.settled ? 0 : Math.max(0, batch.fee - others - p.amount);
             act(() => backend.savePayment(p)).then((ok) => {
-              if (ok) flash('Payment saved', receiptAction(student, batch, p));
+              if (ok) flash('Payment saved', receiptAction(student, batch, p, balance));
             });
             return Promise.resolve(true);
           }}
-          onRemove={(id) => {
-            hidePayment(id);
+          onRemove={(ids, m) => {
+            const all = (byMonth.get(m) || []).every((x) => ids.includes(x.id));
+            hidePayments(ids);
             closePay();
-            act(() => backend.removePayment(id), 'Marked as unpaid');
+            act(() => backend.removePayments(ids), all ? 'Marked as unpaid' : 'Payment removed');
             return Promise.resolve(true);
           }}
         />

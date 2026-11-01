@@ -56,6 +56,8 @@ Each student has a **student's phone** and a **parent's phone**, both optional. 
 
 If you set up the database before the parent's phone existed, run `supabase/add-parent-phone.sql` once in the SQL Editor.
 
+If your database was created before part payments existed, run `supabase/add-part-payments.sql` once. Payments you already recorded keep counting as fully paid.
+
 ## Deleting things
 
 - **Student:** tap the name → **Delete student**. This also deletes that student's payment records, so if they simply left, untick **Still attending** instead and the history stays.
@@ -66,7 +68,8 @@ If you set up the database before the parent's phone existed, run `supabase/add-
 
 - A **batch** has a monthly fee. Students belong to one batch.
 - Each student has a **fees start from** month. Earlier months are never counted as due.
-- A **payment** is one row per student per month: amount received, date paid, optional note. Saving a payment marks that month settled, even if the amount is lower than the fee (a discount or part payment shows as "₹1,800 of ₹2,000").
+- A month can have several **payments** (instalments), each with an amount, date and optional note. The month is **paid** once they add up to the fee. Until then it shows as **Part paid** with the balance left, and only that balance counts as pending and due.
+- To give a discount, tick **Waive the remaining ₹X** when saving a smaller amount. The month then counts as fully paid ("₹1,800 of ₹2,000").
 - **Due** lists active students with unpaid months from their start month up to the month you are viewing. Mark a student "Still attending: off" when they leave and they drop out of the due list; their past payments stay.
 
 ## Layout

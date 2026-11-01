@@ -1,17 +1,20 @@
 import Sheet from './Sheet';
 import { Icon } from './Icons';
 import { currentMonth, dateLabel, monthLabel, monthsBetween } from '../lib/dates';
+import { monthStatus } from '../lib/calc';
 import { contactsOf, rupees, telLink, waLink } from '../lib/format';
 
 // Every month for one student, newest first. Tap a month to record or edit its payment.
 export default function StudentHistory({ student, batch, payments, onPay, onEdit, onClose }) {
-  const byMonth = new Map(payments.map((p) => [p.month, p]));
+  const byMonth = new Map();
+  for (const p of payments) byMonth.set(p.month, [...(byMonth.get(p.month) || []), p]);
   const months = new Set(monthsBetween(student.joined_month, currentMonth()));
   byMonth.forEach((_p, m) => months.add(m));
   const list = [...months].sort().reverse();
 
   const received = payments.reduce((t, p) => t + p.amount, 0);
-  const unpaid = student.active ? list.filter((m) => !byMonth.has(m) && m >= student.joined_month).length : 0;
+  const stat = (m) => monthStatus(byMonth.get(m) || [], batch.fee);
+  const unpaid = student.active ? list.filter((m) => m >= student.joined_month && !stat(m).settled).length : 0;
   const contacts = contactsOf(student);
 
   return (
@@ -39,20 +42,23 @@ export default function StudentHistory({ student, batch, payments, onPay, onEdit
 
       <div className="list" style={{ margin: 0 }}>
         {list.map((m) => {
-          const p = byMonth.get(m);
+          const s = stat(m);
+          const n = s.rows.length;
           return (
             <div className="row" key={m}>
-              <button className="who" onClick={() => onPay(student, m)} aria-label={`${monthLabel(m)}: ${p ? 'paid' : 'not paid'}`}>
+              <button className="who" onClick={() => onPay(student, m)} aria-label={`${monthLabel(m)}: ${s.status === 'paid' ? 'paid' : s.status === 'part' ? 'part paid' : 'not paid'}`}>
                 <div className="n">{monthLabel(m)}</div>
                 <div className="d">
-                  {p
-                    ? `${p.amount < batch.fee ? `${rupees(p.amount)} of ${rupees(batch.fee)}` : rupees(p.amount)} · ${dateLabel(p.paid_on)}${p.note ? ` · ${p.note}` : ''}`
-                    : student.active || m < currentMonth()
-                      ? 'Not paid'
-                      : '–'}
+                  {s.status === 'part'
+                    ? `${rupees(s.received)} paid · ${rupees(s.balance)} left · ${dateLabel(s.last.paid_on)}${n > 1 ? ` · ${n} payments` : ''}`
+                    : s.status === 'paid'
+                      ? `${s.received < batch.fee ? `${rupees(s.received)} of ${rupees(batch.fee)}` : rupees(s.received)} · ${dateLabel(s.last.paid_on)}${n > 1 ? ` · ${n} payments` : s.last.note ? ` · ${s.last.note}` : ''}`
+                      : student.active || m < currentMonth()
+                        ? 'Not paid'
+                        : '–'}
                 </div>
               </button>
-              {p ? <span className="pill paid">Paid</span> : <span className="pill due">Due</span>}
+              {s.status === 'paid' ? <span className="pill paid">Paid</span> : <span className="pill due">{s.status === 'part' ? 'Part' : 'Due'}</span>}
             </div>
           );
         })}
