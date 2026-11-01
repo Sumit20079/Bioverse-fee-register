@@ -75,7 +75,7 @@ export default function PaymentSheet({ student, batch, month: initialMonth, mont
         {existing ? 'Update payment' : 'Save payment'}
       </button>
       {receiptHref && (
-        <a className="btn secondary" href={receiptHref} target="_blank" rel="noreferrer" style={{ textAlign: 'center', textDecoration: 'none' }}>
+        <a className="btn secondary" href={receiptHref} target="_blank" rel="noreferrer">
           Send receipt to {rc.role.toLowerCase()} on WhatsApp
         </a>
       )}
