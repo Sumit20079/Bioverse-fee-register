@@ -84,6 +84,34 @@ function Register() {
     [reload, flash],
   );
 
+  // Pick up changes made on other devices when this one is switched back to (and every minute
+  // while open). It waits behind any pending save, and a failed refresh is ignored quietly
+  // so a weak connection never replaces the screen with an error.
+  useEffect(() => {
+    let last = Date.now();
+    const refresh = (force) => {
+      if (document.visibilityState !== 'visible') return;
+      if (!force && Date.now() - last < 5000) return;
+      last = Date.now();
+      queue.current = queue.current.then(async () => {
+        try {
+          setData(await backend.load());
+        } catch {
+          /* ignore */
+        }
+      });
+    };
+    const onShow = () => refresh(false);
+    const timer = setInterval(() => refresh(true), 60000);
+    document.addEventListener('visibilitychange', onShow);
+    window.addEventListener('focus', onShow);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onShow);
+      window.removeEventListener('focus', onShow);
+    };
+  }, []);
+
   // Show a payment change on screen straight away; the server catches up behind it.
   const showPayment = useCallback((p) => {
     setData((d) => {
