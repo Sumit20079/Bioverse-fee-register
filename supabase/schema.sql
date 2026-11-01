@@ -14,6 +14,7 @@ create table public.students (
   batch_id     uuid not null references public.batches (id) on delete restrict,
   name         text not null,
   phone        text not null default '',
+  parent_phone text not null default '',
   joined_month date not null check (joined_month = date_trunc('month', joined_month)::date),
   active       boolean not null default true,
   created_at   timestamptz not null default now()

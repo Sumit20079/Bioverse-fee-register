@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import MonthNav from './MonthNav';
 import { Icon } from './Icons';
 import { monthLabel, monthsText } from '../lib/dates';
-import { reminderText, rupees, telLink, waLink } from '../lib/format';
+import { contactsOf, reminderText, rupees, telLink, waLink } from '../lib/format';
 import { useWide } from '../lib/useWide';
 
 export default function Due({ list, batches, month, setMonth, onPay }) {
@@ -11,28 +11,54 @@ export default function Due({ list, batches, month, setMonth, onPay }) {
   const shown = useMemo(() => list.filter((d) => batchId === 'all' || d.batch.id === batchId), [list, batchId]);
   const total = shown.reduce((t, d) => t + d.amount, 0);
 
-  // One entry per student with everything either layout needs.
+  // One entry per student, with a WhatsApp/call link for each number we have.
   const items = shown.map((d) => {
     const label = monthsText(d.months);
-    return {
-      d,
-      label,
-      wa: waLink(d.student.phone, reminderText({ name: d.student.name, amount: d.amount, monthsLabel: label, batchName: d.batch.name })),
-      tel: telLink(d.student.phone),
-    };
+    const contacts = contactsOf(d.student).map((c) => ({
+      ...c,
+      wa: waLink(c.phone, reminderText({ name: d.student.name, amount: d.amount, monthsLabel: label, batchName: d.batch.name, to: c.to })),
+      tel: telLink(c.phone),
+    }));
+    return { d, label, contacts };
   });
 
-  const actions = ({ d, wa, tel }, compact) => (
+  const payBtn = ({ d }) => (
+    <button className="sbtn primary" onClick={() => onPay(d.student, d.months[0])}>
+      <Icon.Check width={18} height={18} /> Mark paid
+    </button>
+  );
+
+  // Laptop: Mark paid plus one WhatsApp button per number.
+  const tableActions = (it) => (
     <>
-      <button className="sbtn primary" onClick={() => onPay(d.student, d.months[0])}>
-        <Icon.Check width={18} height={18} /> Mark paid
-      </button>
-      <a className="sbtn" href={wa || undefined} target="_blank" rel="noreferrer" aria-disabled={!wa} aria-label={`WhatsApp reminder to ${d.student.name}`}>
-        <Icon.Chat width={18} height={18} /> WhatsApp
-      </a>
-      <a className="sbtn" href={tel || undefined} aria-disabled={!tel} aria-label={`Call ${d.student.name}`} style={compact ? { flex: '0 0 44px', padding: 0 } : undefined}>
-        <Icon.Phone width={18} height={18} />
-      </a>
+      {payBtn(it)}
+      {it.contacts.map((c) => (
+        <a key={c.role} className="sbtn" href={c.wa || undefined} target="_blank" rel="noreferrer" aria-disabled={!c.wa} aria-label={`WhatsApp ${c.role.toLowerCase()} of ${it.d.student.name}`}>
+          <Icon.Chat width={18} height={18} /> {c.role}
+        </a>
+      ))}
+    </>
+  );
+
+  // Phone: Mark paid, then one line per number with its own WhatsApp and call buttons.
+  const cardActions = (it) => (
+    <>
+      <div className="due-actions">{payBtn(it)}</div>
+      {it.contacts.length === 0 && <div className="muted small">No phone number saved</div>}
+      {it.contacts.map((c) => (
+        <div className="contact" key={c.role}>
+          <div className="who">
+            <span className="role">{c.role}</span>
+            <span className="muted small">{c.phone}</span>
+          </div>
+          <a className="sbtn" href={c.wa || undefined} target="_blank" rel="noreferrer" aria-disabled={!c.wa} aria-label={`WhatsApp ${c.role.toLowerCase()} of ${it.d.student.name}`}>
+            <Icon.Chat width={18} height={18} /> WhatsApp
+          </a>
+          <a className="sbtn call" href={c.tel || undefined} aria-disabled={!c.tel} aria-label={`Call ${c.role.toLowerCase()} of ${it.d.student.name}`}>
+            <Icon.Phone width={18} height={18} />
+          </a>
+        </div>
+      ))}
     </>
   );
 
@@ -92,12 +118,14 @@ export default function Due({ list, batches, month, setMonth, onPay }) {
                 <tr key={it.d.student.id} className="rise" style={{ '--i': i }}>
                   <td>
                     <b>{it.d.student.name}</b>
-                    <div className="muted small">{it.d.student.phone || 'No phone'}</div>
+                    <div className="muted small">
+                      {it.contacts.length ? it.contacts.map((c) => `${c.role[0]}: ${c.phone}`).join(' · ') : 'No phone'}
+                    </div>
                   </td>
                   <td className="muted">{it.d.batch.name}</td>
                   <td>{it.label}</td>
                   <td className="num amt-due">{rupees(it.d.amount)}</td>
-                  <td className="act">{actions(it, false)}</td>
+                  <td className="act">{tableActions(it)}</td>
                 </tr>
               ))}
             </tbody>
@@ -117,7 +145,7 @@ export default function Due({ list, batches, month, setMonth, onPay }) {
                   <span>{it.label}</span>
                 </div>
               </div>
-              <div className="due-actions">{actions(it, true)}</div>
+              {cardActions(it)}
             </div>
           ))}
         </div>

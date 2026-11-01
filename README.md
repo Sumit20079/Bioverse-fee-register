@@ -50,6 +50,12 @@ It's one website, so every device uses the same link and the same login, and the
 
 Once added, it opens full screen like an app. It needs an internet connection to load and save.
 
+## Phone numbers
+
+Each student has a **student's phone** and a **parent's phone**, both optional. The Due tab shows a WhatsApp button for each number that's saved (the parent's message names the student). Import accepts `name, student phone, parent phone`; the last two are optional.
+
+If you set up the database before the parent's phone existed, run `supabase/add-parent-phone.sql` once in the SQL Editor.
+
 ## Deleting things
 
 - **Student:** tap the name → **Delete student**. This also deletes that student's payment records, so if they simply left, untick **Still attending** instead and the history stays.

@@ -109,7 +109,8 @@ export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditS
                   </th>
                 )}
                 <th>Student</th>
-                <th>Phone</th>
+                <th>Student no.</th>
+                <th>Parent no.</th>
                 <th>Status</th>
                 <th className="num">Amount</th>
                 <th>Paid on</th>
@@ -143,6 +144,7 @@ export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditS
                     {!student.active && <span className="tag">Left</span>}
                   </td>
                   <td className="muted">{student.phone || '–'}</td>
+                  <td className="muted">{student.parent_phone || '–'}</td>
                   <td>
                     <span className={'status ' + (payment ? 'paid' : 'due')}>{payment ? 'Paid' : 'Due'}</span>
                   </td>

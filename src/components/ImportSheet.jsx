@@ -39,7 +39,7 @@ export default function ImportSheet({ batches, students, defaultBatchId, onImpor
   const batchName = batches.find((b) => b.id === batchId)?.name;
 
   return (
-    <Sheet title="Import students" subtitle="One student per line: name, phone" onClose={onClose}>
+    <Sheet title="Import students" subtitle="One student per line: name, student phone, parent phone" onClose={onClose}>
       <div className="field">
         <label htmlFor="im-batch">Add to batch</label>
         <select id="im-batch" value={batchId} onChange={(e) => setBatchId(e.target.value)}>
@@ -54,7 +54,7 @@ export default function ImportSheet({ batches, students, defaultBatchId, onImpor
       </div>
       <div className="field">
         <label htmlFor="im-text">Paste list or upload a CSV</label>
-        <textarea id="im-text" value={text} placeholder={'Aarav Das, 9830012345\nIshita Roy, 9830012346'} onChange={(e) => setText(e.target.value)} />
+        <textarea id="im-text" value={text} placeholder={'Aarav Das, 9830012345, 9830054321\nIshita Roy, 9830012346, 9830054322'} onChange={(e) => setText(e.target.value)} />
       </div>
       <div className="field">
         <label htmlFor="im-file" className="sbtn" style={{ cursor: 'pointer' }}>Choose CSV file</label>

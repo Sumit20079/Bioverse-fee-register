@@ -9,7 +9,15 @@ export function waLink(phone, text) {
   return `https://wa.me/${d}?text=${encodeURIComponent(text)}`;
 }
 
-export function reminderText({ name, amount, monthsLabel, batchName }) {
+// `to` is 'student' (default) or 'parent'; a parent's message names the student.
+export function reminderText({ name, amount, monthsLabel, batchName, to = 'student' }) {
+  if (to === 'parent') {
+    return (
+      `Hello, a gentle reminder that the tuition fee of ${rupees(amount)} for ${name} ` +
+      `(${batchName}) for ${monthsLabel} is still pending. ` +
+      `Please pay when you can. Thank you!`
+    );
+  }
   return (
     `Hello ${name}, a gentle reminder that the tuition fee of ${rupees(amount)} ` +
     `for ${monthsLabel} (${batchName}) is still pending. ` +
@@ -17,12 +25,22 @@ export function reminderText({ name, amount, monthsLabel, batchName }) {
   );
 }
 
+// The numbers we have for a student, in the order we'd contact them.
+export const contactsOf = (s) =>
+  [
+    { role: 'Student', to: 'student', phone: s.phone || '' },
+    { role: 'Parent', to: 'parent', phone: s.parent_phone || '' },
+  ].filter((c) => c.phone);
+
 export const telLink = (phone) => {
   const d = String(phone || '').replace(/[^\d+]/g, '');
   return d ? `tel:${d}` : null;
 };
 
-// "name, phone" per line (comma, tab or semicolon separated). A header row is skipped.
+const digits = (v) => (v || '').replace(/[^\d+]/g, '');
+
+// "name, student phone, parent phone" per line (comma, tab or semicolon separated).
+// The phones are optional. A header row is skipped.
 export function parseStudents(text) {
   const out = [];
   for (const raw of text.split(/\r?\n/)) {
@@ -32,7 +50,7 @@ export function parseStudents(text) {
     const name = cells[0];
     if (!name) continue;
     if (out.length === 0 && /^(student\s*)?name$/i.test(name)) continue;
-    out.push({ name, phone: (cells[1] || '').replace(/[^\d+]/g, '') });
+    out.push({ name, phone: digits(cells[1]), parent_phone: digits(cells[2]) });
   }
   return out;
 }

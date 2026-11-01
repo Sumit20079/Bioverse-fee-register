@@ -6,6 +6,7 @@ export default function StudentSheet({ student, batches, defaultBatchId, month, 
   const editing = Boolean(student);
   const [name, setName] = useState(student?.name || '');
   const [phone, setPhone] = useState(student?.phone || '');
+  const [parentPhone, setParentPhone] = useState(student?.parent_phone || '');
   const [batchId, setBatchId] = useState(student?.batch_id || defaultBatchId || batches[0]?.id || '');
   const [joined, setJoined] = useState(student?.joined_month || month || currentMonth());
   const [active, setActive] = useState(student?.active ?? true);
@@ -21,6 +22,7 @@ export default function StudentSheet({ student, batches, defaultBatchId, month, 
       id: student?.id,
       name: name.trim(),
       phone: phone.replace(/[^\d+]/g, ''),
+      parent_phone: parentPhone.replace(/[^\d+]/g, ''),
       batch_id: batchId,
       joined_month: joined,
       active,
@@ -63,8 +65,13 @@ export default function StudentSheet({ student, batches, defaultBatchId, month, 
           <input id="st-name" value={name} onChange={(e) => setName(e.target.value)} autoFocus={!editing} />
         </div>
         <div className="field">
-          <label htmlFor="st-phone">Phone (for WhatsApp / call)</label>
+          <label htmlFor="st-phone">Student&apos;s phone</label>
           <input id="st-phone" type="tel" inputMode="tel" value={phone} placeholder="98300 12345" onChange={(e) => setPhone(e.target.value)} />
+        </div>
+        <div className="field">
+          <label htmlFor="st-parent-phone">Parent&apos;s phone</label>
+          <input id="st-parent-phone" type="tel" inputMode="tel" value={parentPhone} placeholder="98300 54321" onChange={(e) => setParentPhone(e.target.value)} />
+          <p className="hint">Both are optional. Reminders can go to either one.</p>
         </div>
         <div className="field">
           <label htmlFor="st-batch">Batch</label>

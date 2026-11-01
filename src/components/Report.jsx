@@ -4,13 +4,14 @@ import { download, rupees, toCsv } from '../lib/format';
 
 export default function Report({ view, month, onClose }) {
   function exportCsv() {
-    const rows = [['Batch', 'Student', 'Phone', 'Month', 'Status', 'Amount received', 'Date paid', 'Note']];
+    const rows = [['Batch', 'Student', 'Student phone', 'Parent phone', 'Month', 'Status', 'Amount received', 'Date paid', 'Note']];
     for (const v of view.batches) {
       for (const { student, payment } of v.rows) {
         rows.push([
           v.batch.name,
           student.name,
           student.phone,
+          student.parent_phone || '',
           month,
           payment ? 'Paid' : 'Due',
           payment ? payment.amount : '',

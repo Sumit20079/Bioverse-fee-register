@@ -38,6 +38,7 @@ const check = ({ error }) => {
 const studentRow = (s) => ({
   name: s.name,
   phone: s.phone || '',
+  parent_phone: s.parent_phone || '',
   batch_id: s.batch_id,
   joined_month: asDate(s.joined_month),
   active: s.active ?? true,
@@ -110,7 +111,16 @@ function seed() {
   const b11 = { id: uid(), name: 'Class 11 Bio · Morning', fee: 1500 };
   const b12 = { id: uid(), name: 'Class 12 Bio · Evening', fee: 2000 };
   const b10 = { id: uid(), name: 'Class 10 Science · Sunday', fee: 1000 };
-  const mk = (batch, name, phone, joined) => ({ id: uid(), batch_id: batch.id, name, phone, joined_month: joined, active: true });
+  // parent number is the student's number with the last digit changed, just for the sample data
+  const mk = (batch, name, phone, joined) => ({
+    id: uid(),
+    batch_id: batch.id,
+    name,
+    phone,
+    parent_phone: phone.slice(0, -1) + ((Number(phone.slice(-1)) + 5) % 10),
+    joined_month: joined,
+    active: true,
+  });
   const students = [
     mk(b12, 'Aarav Das', '9830012345', prev),
     mk(b12, 'Ishita Roy', '9830012346', prev),
