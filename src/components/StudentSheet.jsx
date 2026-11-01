@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Sheet from './Sheet';
 import { currentMonth } from '../lib/dates';
 
-export default function StudentSheet({ student, batches, defaultBatchId, month, paymentCount = 0, onSave, onDelete, onClose }) {
+export default function StudentSheet({ student, batches, defaultBatchId, month, paymentCount = 0, onSave, onDelete, onHistory, onClose }) {
   const editing = Boolean(student);
   const [name, setName] = useState(student?.name || '');
   const [phone, setPhone] = useState(student?.phone || '');
@@ -95,6 +95,11 @@ export default function StudentSheet({ student, batches, defaultBatchId, month, 
         <button className="btn" disabled={!valid || busy}>{editing ? 'Save changes' : 'Add student'}</button>
       </form>
 
+      {editing && onHistory && (
+        <button type="button" className="btn secondary" disabled={busy} onClick={() => onHistory(student)}>
+          Payment history
+        </button>
+      )}
       {editing && (
         <button type="button" className="btn danger" disabled={busy} onClick={() => setConfirming(true)}>
           Delete student

@@ -25,6 +25,21 @@ export function reminderText({ name, amount, monthsLabel, batchName, to = 'stude
   );
 }
 
+// Where a receipt goes: the parent if we have their number, otherwise the student.
+export const receiptContact = (s) => {
+  const all = contactsOf(s);
+  return all.find((c) => c.to === 'parent') || all[0] || null;
+};
+
+export function receiptText({ name, amount, monthLabel, batchName, paidOn, to = 'student' }) {
+  const who = to === 'parent' ? `for ${name} ` : '';
+  const hello = to === 'parent' ? 'Hello' : `Hello ${name}`;
+  return (
+    `${hello}, we have received the tuition fee of ${rupees(amount)} ${who}` +
+    `(${batchName}) for ${monthLabel}${paidOn ? ` on ${paidOn}` : ''}. Thank you!`
+  );
+}
+
 // The numbers we have for a student, in the order we'd contact them.
 export const contactsOf = (s) =>
   [

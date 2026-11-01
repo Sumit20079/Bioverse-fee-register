@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { backend, isDemo, supabase } from './lib/db';
-import { currentMonth, monthsBetween } from './lib/dates';
+import { currentMonth, longDateLabel, monthLabel, monthsBetween } from './lib/dates';
 import { dueList, monthView } from './lib/calc';
+import { receiptContact, receiptText, waLink } from './lib/format';
 import Login from './components/Login';
 import Overview from './components/Overview';
 import Batches from './components/Batches';
 import BatchDetail from './components/BatchDetail';
 import Due from './components/Due';
+import Search from './components/Search';
+import StudentHistory from './components/StudentHistory';
 import Report from './components/Report';
 import PaymentSheet from './components/PaymentSheet';
 import StudentSheet from './components/StudentSheet';
@@ -38,13 +41,14 @@ function Register() {
   const [batchId, setBatchId] = useState(null);
   const [month, setMonth] = useState(currentMonth());
   const [sheet, setSheet] = useState(null);
-  const [toast, setToast] = useState('');
+  const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
 
-  const flash = useCallback((msg) => {
-    setToast(msg);
+  // `action` is an optional { label, href } link shown inside the toast (e.g. send a receipt).
+  const flash = useCallback((msg, action) => {
+    setToast({ msg, action });
     clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(''), 2600);
+    toastTimer.current = setTimeout(() => setToast(null), action ? 8000 : 2600);
   }, []);
 
   const reload = useCallback(async () => {
@@ -153,7 +157,19 @@ function Register() {
   };
   const detail = batchId ? view.batches.find((b) => b.batch.id === batchId) : null;
 
-  const openPay = (student, forMonth) => setSheet({ type: 'pay', studentId: student.id, month: forMonth });
+  const openPay = (student, forMonth, fromHistory = false) =>
+    setSheet({ type: 'pay', studentId: student.id, month: forMonth, fromHistory });
+  // Closing a payment opened from a student's history goes back to that history.
+  const closePay = () => (sheet?.fromHistory ? setSheet({ type: 'history', studentId: sheet.studentId }) : close());
+  const receiptAction = (student, batch, p) => {
+    const c = receiptContact(student);
+    if (!c) return undefined;
+    const href = waLink(
+      c.phone,
+      receiptText({ name: student.name, amount: p.amount, monthLabel: monthLabel(p.month), batchName: batch.name, paidOn: longDateLabel(p.paid_on), to: c.to }),
+    );
+    return href ? { label: `Send receipt to ${c.role.toLowerCase()}`, href } : undefined;
+  };
   const newBatch = () => setSheet({ type: 'batch' });
   const addStudent = (defaultBatchId) => {
     if (!data.batches.length) return setSheet({ type: 'batch' });
@@ -161,7 +177,16 @@ function Register() {
   };
 
   let body;
-  if (tab === 'due') {
+  if (tab === 'search') {
+    body = (
+      <Search
+        students={data.students}
+        batches={data.batches}
+        dues={dues}
+        onOpen={(s) => setSheet({ type: 'history', studentId: s.id })}
+      />
+    );
+  } else if (tab === 'due') {
     body = <Due list={dues} batches={data.batches} month={month} setMonth={setMonth} onPay={openPay} />;
   } else if (detail) {
     body = (
@@ -228,19 +253,36 @@ function Register() {
           month={sheet.month}
           monthOptions={[...options].sort()}
           paidMap={paidMap}
-          onClose={close}
+          onClose={closePay}
           onSave={(p) => {
             showPayment(p);
-            close();
-            act(() => backend.savePayment(p), 'Payment saved');
+            closePay();
+            act(() => backend.savePayment(p)).then((ok) => {
+              if (ok) flash('Payment saved', receiptAction(student, batch, p));
+            });
             return Promise.resolve(true);
           }}
           onRemove={(id) => {
             hidePayment(id);
-            close();
+            closePay();
             act(() => backend.removePayment(id), 'Marked as unpaid');
             return Promise.resolve(true);
           }}
+        />
+      );
+    }
+  } else if (sheet?.type === 'history') {
+    const student = data.students.find((s) => s.id === sheet.studentId);
+    const batch = student && data.batches.find((b) => b.id === student.batch_id);
+    if (student && batch) {
+      sheetEl = (
+        <StudentHistory
+          student={student}
+          batch={batch}
+          payments={data.payments.filter((p) => p.student_id === student.id)}
+          onPay={(s, m) => openPay(s, m, true)}
+          onEdit={(s) => setSheet({ type: 'student', student: s })}
+          onClose={close}
         />
       );
     }
@@ -255,6 +297,7 @@ function Register() {
         onClose={close}
         onSave={(s) => closeAfter(act(() => backend.saveStudent(s), s.id ? 'Student updated' : 'Student added'))}
         onDelete={(id) => closeAfter(act(() => backend.deleteStudent(id), 'Student deleted'))}
+        onHistory={(s) => setSheet({ type: 'history', studentId: s.id })}
       />
     );
   } else if (sheet?.type === 'batch') {
@@ -322,8 +365,11 @@ function Register() {
         <button className={tab === 'overview' && !batchId ? 'on' : ''} onClick={() => goTab('overview')}>
           <Icon.Home width={22} height={22} /> Overview
         </button>
-        <button className={tab === 'batches' || (batchId && tab !== 'due') ? 'on' : ''} onClick={() => goTab('batches')}>
+        <button className={tab === 'batches' || (batchId && tab !== 'due' && tab !== 'search') ? 'on' : ''} onClick={() => goTab('batches')}>
           <Icon.List width={22} height={22} /> Batches
+        </button>
+        <button className={tab === 'search' ? 'on' : ''} onClick={() => goTab('search')}>
+          <Icon.Search width={22} height={22} /> Search
         </button>
         <button className={tab === 'due' ? 'on' : ''} onClick={() => goTab('due')}>
           <Icon.Clock width={22} height={22} /> Due
@@ -333,7 +379,16 @@ function Register() {
 
       {sheetEl}
       {sheet?.type === 'report' && <Report view={view} month={month} onClose={close} />}
-      {toast && <div className="toast" role="status">{toast}</div>}
+      {toast && (
+        <div className="toast" role="status">
+          <span>{toast.msg}</span>
+          {toast.action && (
+            <a href={toast.action.href} target="_blank" rel="noreferrer" onClick={() => setToast(null)}>
+              {toast.action.label}
+            </a>
+          )}
+        </div>
+      )}
     </div>
   );
 }

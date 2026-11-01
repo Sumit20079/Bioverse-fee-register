@@ -30,5 +30,6 @@ export const Icon = {
   Printer: make(<path d="M7 9V4h10v5M7 18H5v-7h14v7h-2M7 14h10v6H7z" />),
   Upload: make(<path d="M12 16V6m0 0l-4 4m4-4l4 4M5 20h14" />),
   Pencil: make(<path d="M4 20l4-1 11-11-3-3L5 16l-1 4z" />),
+  Search: make(<><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></>),
   Out: make(<path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10" />),
 };

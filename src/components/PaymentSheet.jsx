@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import Sheet from './Sheet';
 import { longDateLabel, monthLabel, todayISO } from '../lib/dates';
-import { rupees } from '../lib/format';
+import { receiptContact, receiptText, rupees, waLink } from '../lib/format';
 
 // paidMap: month -> existing payment for this student (lets the teacher edit or undo).
 export default function PaymentSheet({ student, batch, month: initialMonth, monthOptions, paidMap, onSave, onRemove, onClose }) {
@@ -34,6 +34,11 @@ export default function PaymentSheet({ student, batch, month: initialMonth, mont
     const ok = await onRemove(existing.id);
     if (!ok) setBusy(false);
   }
+
+  const rc = existing ? receiptContact(student) : null;
+  const receiptHref = rc
+    ? waLink(rc.phone, receiptText({ name: student.name, amount: existing.amount, monthLabel: monthLabel(month), batchName: batch.name, paidOn: longDateLabel(existing.paid_on), to: rc.to }))
+    : null;
 
   return (
     <Sheet title={student.name} subtitle={`${batch.name} · ${rupees(batch.fee)} / month`} onClose={onClose}>
@@ -69,6 +74,11 @@ export default function PaymentSheet({ student, batch, month: initialMonth, mont
       <button className="btn" disabled={!valid || busy} onClick={save}>
         {existing ? 'Update payment' : 'Save payment'}
       </button>
+      {receiptHref && (
+        <a className="btn secondary" href={receiptHref} target="_blank" rel="noreferrer" style={{ textAlign: 'center', textDecoration: 'none' }}>
+          Send receipt to {rc.role.toLowerCase()} on WhatsApp
+        </a>
+      )}
       {existing && (
         <button className="btn danger" disabled={busy} onClick={remove}>
           Mark as unpaid
