@@ -53,6 +53,7 @@ Once added, it opens full screen like an app. It needs an internet connection to
 ## Deleting things
 
 - **Student:** tap the name → **Delete student**. This also deletes that student's payment records, so if they simply left, untick **Still attending** instead and the history stays.
+- **Several students at once:** open the batch → **Select** → tick the students (or **All**) → **Delete**. The confirm screen lists exactly who will be removed. Changing the Paid/Due filter clears the ticks, so you can only delete what you can see.
 - **Batch:** tap the pencil on the Batches tab → **Delete batch**. If it has students, the confirm screen says how many students and payment records go with it. To stop a class but keep the history, untick **Still attending** on each student instead.
 
 ## How the fee logic works

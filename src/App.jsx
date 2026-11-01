@@ -12,6 +12,7 @@ import PaymentSheet from './components/PaymentSheet';
 import StudentSheet from './components/StudentSheet';
 import BatchSheet from './components/BatchSheet';
 import ImportSheet from './components/ImportSheet';
+import BulkDeleteSheet from './components/BulkDeleteSheet';
 import { Icon } from './components/Icons';
 
 export default function App() {
@@ -145,6 +146,7 @@ function Register() {
         onEditStudent={(student) => setSheet({ type: 'student', student })}
         onEditBatch={() => setSheet({ type: 'batch', batch: detail.batch })}
         onAddStudent={() => addStudent(detail.batch.id)}
+        onDeleteMany={(ids, done) => setSheet({ type: 'bulkdelete', ids, done })}
       />
     );
   } else if (tab === 'batches') {
@@ -248,6 +250,26 @@ function Register() {
             return ok;
           })
         }
+      />
+    );
+  } else if (sheet?.type === 'bulkdelete') {
+    const gone = new Set(sheet.ids);
+    sheetEl = (
+      <BulkDeleteSheet
+        students={data.students.filter((s) => gone.has(s.id))}
+        paymentCount={data.payments.filter((p) => gone.has(p.student_id)).length}
+        onClose={close}
+        onConfirm={() => {
+          // remove them from the screen at once; the server catches up behind
+          setData((d) => ({
+            ...d,
+            students: d.students.filter((s) => !gone.has(s.id)),
+            payments: d.payments.filter((p) => !gone.has(p.student_id)),
+          }));
+          close();
+          sheet.done?.();
+          act(() => backend.deleteStudents([...gone]), `${gone.size} student${gone.size === 1 ? '' : 's'} deleted`);
+        }}
       />
     );
   } else if (sheet?.type === 'import') {

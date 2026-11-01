@@ -89,6 +89,11 @@ const remote = {
   async deleteStudent(id) {
     check(await supabase.from('students').delete().eq('id', id));
   },
+  async deleteStudents(ids) {
+    for (let i = 0; i < ids.length; i += 100) {
+      check(await supabase.from('students').delete().in('id', ids.slice(i, i + 100)));
+    }
+  },
 };
 
 /* ---------- Demo backend (localStorage) ---------- */
@@ -204,6 +209,13 @@ const demo = {
     const d = readDemo();
     d.students = d.students.filter((s) => s.id !== id);
     d.payments = d.payments.filter((p) => p.student_id !== id);
+    writeDemo(d);
+  },
+  async deleteStudents(ids) {
+    const gone = new Set(ids);
+    const d = readDemo();
+    d.students = d.students.filter((s) => !gone.has(s.id));
+    d.payments = d.payments.filter((p) => !gone.has(p.student_id));
     writeDemo(d);
   },
 };

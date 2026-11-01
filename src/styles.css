@@ -281,3 +281,26 @@ button:active:not(:disabled), a.sbtn:active { transform: scale(0.97); }
   .grab { display: none; }
   .report { max-width: 900px; }
 }
+
+/* ---------- select several ---------- */
+.row.sel { justify-content: flex-start; gap: 14px; cursor: pointer; }
+.row.sel .who { display: block; min-width: 0; }
+.row.sel .n { display: block; font-size: 15px; font-weight: 600; }
+.row.sel .d { display: block; font-size: 13px; color: var(--muted); margin-top: 2px; }
+.row.picked, .grid-table tr.picked { background: var(--blue-tint); }
+.row.sel input, .grid-table .pick input { width: 22px; height: 22px; accent-color: var(--blue); flex: none; }
+.grid-table .pick { width: 44px; padding-right: 0; }
+.grid-table tr.selectable { cursor: pointer; }
+.namelist { margin: 0; padding: 0 0 0 20px; display: flex; flex-direction: column; gap: 4px; font-size: 15px; }
+
+.selbar {
+  position: fixed; left: 0; right: 0; bottom: 84px; margin: 0 auto; width: calc(100% - 24px); max-width: 456px; z-index: 30;
+  display: flex; align-items: center; gap: 8px; padding: 10px 10px 10px 16px; border-radius: 16px;
+  background: var(--ink); color: #fff; box-shadow: 0 8px 24px rgba(20, 24, 31, 0.3);
+  animation: rise 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.selbar .count { flex: 1; font-size: 15px; font-weight: 600; }
+.selbar .sbtn { height: 40px; background: transparent; color: #fff; border-color: rgba(255, 255, 255, 0.35); }
+.selbar .sbtn.del { background: var(--danger); border-color: var(--danger); }
+@media (min-width: 600px) { .selbar { max-width: 616px; } }
+@media (min-width: 900px) { .selbar { left: 240px; bottom: 24px; max-width: 560px; width: calc(100% - 288px); } }
