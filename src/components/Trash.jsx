@@ -7,10 +7,12 @@ const ago = (iso) => {
 };
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
-export default function Trash({ trash, onRestoreStudent, onRestoreBatch, onPurgeStudent, onPurgeBatch, onClose }) {
+export default function Trash({ trash, onRestoreStudent, onRestoreBatch, onPurgeStudent, onPurgeBatch, onRestoreAll, onPurgeAll, onClose }) {
   // "Delete forever" needs a second tap on the same row.
   const [armed, setArmed] = useState(null);
   const empty = trash.batches.length === 0 && trash.students.length === 0;
+  const people = trash.students.length + trash.batches.reduce((n, t) => n + t.students.length, 0);
+  const items = trash.students.length + trash.batches.length;
 
   const Buttons = ({ id, restore, purge }) => (
     <div className="a">
@@ -30,6 +32,26 @@ export default function Trash({ trash, onRestoreStudent, onRestoreBatch, onPurge
   return (
     <Sheet title="Recently deleted" subtitle="Restore brings back the student with all their payments." onClose={onClose}>
       {empty && <p className="muted">Nothing here. Deleted students and batches show up here.</p>}
+
+      {!empty && items > 1 && (
+        <div className="trow">
+          <div className="m">
+            {plural(items, 'item')} here{people > 0 ? ` (${plural(people, 'student')})` : ''}
+          </div>
+          <div className="a">
+            <button className="sbtn" onClick={onRestoreAll}>
+              Restore all
+            </button>
+            <button
+              className={'sbtn danger' + (armed === 'all' ? ' armed' : '')}
+              onClick={() => (armed === 'all' ? onPurgeAll() : setArmed('all'))}
+              onBlur={() => setArmed((a) => (a === 'all' ? null : a))}
+            >
+              {armed === 'all' ? 'Tap again to confirm' : 'Empty bin'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {trash.batches.map((t) => (
         <div className="trow" key={t.batch.id}>

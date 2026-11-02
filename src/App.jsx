@@ -408,6 +408,19 @@ function Register() {
         onRestoreBatch={(id) => act(() => backend.restoreBatch(id), 'Batch restored')}
         onPurgeStudent={(id) => act(() => backend.purgeStudents([id]), 'Deleted forever')}
         onPurgeBatch={(id) => act(() => backend.purgeBatch(id), 'Deleted forever')}
+        onRestoreAll={() =>
+          act(async () => {
+            for (const t of data.trash.batches) await backend.restoreBatch(t.batch.id);
+            if (data.trash.students.length) await backend.restoreStudents(data.trash.students.map((t) => t.student.id));
+          }, 'Everything restored')
+        }
+        onPurgeAll={() =>
+          act(async () => {
+            const ids = [...data.trash.students.map((t) => t.student.id), ...data.trash.batches.flatMap((t) => t.students.map((s) => s.id))];
+            if (ids.length) await backend.purgeStudents(ids);
+            for (const t of data.trash.batches) await backend.purgeBatch(t.batch.id);
+          }, 'Recently deleted emptied')
+        }
       />
     );
   } else if (sheet?.type === 'import') {
