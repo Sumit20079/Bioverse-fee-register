@@ -342,3 +342,27 @@ a.btn { display: flex; align-items: center; justify-content: center; text-align:
 .sbtn.danger { color: var(--danger); border-color: #f0c5c0; }
 .sbtn.danger.armed { background: var(--danger); border-color: var(--danger); color: #fff; }
 .toast button { background: none; border: 0; padding: 0; color: #fff; font-weight: 700; font-size: 14px; text-decoration: underline; white-space: nowrap; }
+
+/* Collected */
+.per { display: flex; gap: 4px; margin: 8px 20px 0; padding: 4px; background: #e9ecf1; border-radius: 14px; }
+.per button { flex: 1; height: 40px; border: 0; background: none; border-radius: 11px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.per button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(20, 30, 60, 0.12); }
+.pernav { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px 0; }
+.pernav b { font-size: 16px; }
+.pernav .iconbtn:disabled { opacity: 0.3; }
+.coll-hero { margin: 8px 20px 0; padding: 18px 20px; display: flex; flex-direction: column; gap: 4px; }
+.coll-hero .k { font-size: 13px; color: var(--muted); }
+.coll-hero .big { font-size: 38px; font-weight: 800; letter-spacing: -1px; color: var(--blue); }
+.bars { margin: 12px 20px 0; padding: 14px 14px 10px; }
+.bars .plot { display: flex; align-items: flex-end; gap: 3px; height: 110px; }
+.bars .col { flex: 1; height: 100%; display: flex; align-items: flex-end; }
+.bars .col i { display: block; width: 100%; border-radius: 4px 4px 0 0; background: #dfe4ec; }
+.bars .col i.on { background: var(--blue); }
+.bars .axis { display: flex; gap: 3px; margin-top: 6px; }
+.bars .axis span { flex: 1; text-align: center; font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: visible; }
+.row.bybatch { width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; text-align: left; }
+.row.bybatch > b { font-size: 15px; white-space: nowrap; }
+.row.bybatch .who { flex: 1; display: block; }
+.row.bybatch .who .n, .row.bybatch .who .d { display: block; }
+.share { display: block; height: 4px; border-radius: 2px; background: #e9ecf1; margin-top: 8px; overflow: hidden; }
+.share i { display: block; height: 100%; background: var(--blue); border-radius: 2px; }

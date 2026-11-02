@@ -9,6 +9,7 @@ import Batches from './components/Batches';
 import BatchDetail from './components/BatchDetail';
 import Due from './components/Due';
 import Search from './components/Search';
+import Collected from './components/Collected';
 import StudentHistory from './components/StudentHistory';
 import Report from './components/Report';
 import PaymentSheet from './components/PaymentSheet';
@@ -213,6 +214,8 @@ function Register() {
         onOpen={(s) => setSheet({ type: 'history', studentId: s.id })}
       />
     );
+  } else if (tab === 'collected') {
+    body = <Collected data={data} onOpen={(student, m) => openPay(student, m)} />;
   } else if (tab === 'due') {
     body = <Due list={dues} batches={data.batches} month={month} setMonth={setMonth} onPay={openPay} />;
   } else if (detail) {
@@ -473,11 +476,14 @@ function Register() {
         <button className={tab === 'overview' && !batchId ? 'on' : ''} onClick={() => goTab('overview')}>
           <Icon.Home width={22} height={22} /> Overview
         </button>
-        <button className={tab === 'batches' || (batchId && tab !== 'due' && tab !== 'search') ? 'on' : ''} onClick={() => goTab('batches')}>
+        <button className={tab === 'batches' || (batchId && tab !== 'due' && tab !== 'search' && tab !== 'collected') ? 'on' : ''} onClick={() => goTab('batches')}>
           <Icon.List width={22} height={22} /> Batches
         </button>
         <button className={tab === 'search' ? 'on' : ''} onClick={() => goTab('search')}>
           <Icon.Search width={22} height={22} /> Search
+        </button>
+        <button className={tab === 'collected' ? 'on' : ''} onClick={() => goTab('collected')}>
+          <Icon.Rupee width={22} height={22} /> Collected
         </button>
         <button className={tab === 'due' ? 'on' : ''} onClick={() => goTab('due')}>
           <Icon.Clock width={22} height={22} /> Due
