@@ -17,6 +17,7 @@ import BatchSheet from './components/BatchSheet';
 import ImportSheet from './components/ImportSheet';
 import BulkDeleteSheet from './components/BulkDeleteSheet';
 import Trash from './components/Trash';
+import RestoreSheet from './components/RestoreSheet';
 import { Icon } from './components/Icons';
 
 export default function App() {
@@ -240,6 +241,7 @@ function Register() {
           onImport={() => setSheet({ type: 'import' })}
           onReport={() => setSheet({ type: 'report' })}
           onBackup={backup}
+          onRestoreFile={() => setSheet({ type: 'restore' })}
           onTrash={() => {
             setToast(null);
             setSheet({ type: 'trash' });
@@ -378,6 +380,21 @@ function Register() {
             undoable(ok, `${ids.length} student${ids.length === 1 ? '' : 's'} deleted`, () => backend.restoreStudents(ids)),
           );
         }}
+      />
+    );
+  } else if (sheet?.type === 'restore') {
+    sheetEl = (
+      <RestoreSheet
+        loadCurrent={() => backend.backup()}
+        onClose={close}
+        onRestore={(plan) =>
+          closeAfter(
+            act(
+              () => backend.restore(plan),
+              `Restored ${plan.students.length} student${plan.students.length === 1 ? '' : 's'}, ${plan.payments.length} payment${plan.payments.length === 1 ? '' : 's'}`,
+            ),
+          )
+        }
       />
     );
   } else if (sheet?.type === 'trash') {
