@@ -5,7 +5,7 @@ import { dateLabel, monthShort } from '../lib/dates';
 import { rupees } from '../lib/format';
 import { useWide } from '../lib/useWide';
 
-export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditStudent, onEditBatch, onAddStudent, onDeleteMany }) {
+export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditStudent, onEditBatch, onAddStudent, onDeleteMany, onMoveMany }) {
   const [filter, setFilterRaw] = useState('all');
   const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState(() => new Set());
@@ -222,6 +222,18 @@ export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditS
           </span>
           <button className="sbtn" onClick={toggleAll}>
             {allPicked ? 'None' : 'All'}
+          </button>
+          <button
+            className="sbtn"
+            disabled={chosen.length === 0}
+            onClick={() =>
+              onMoveMany(
+                chosen.map((r) => r.student.id),
+                stopSelecting,
+              )
+            }
+          >
+            Move
           </button>
           <button
             className="sbtn del"

@@ -18,6 +18,7 @@ import ImportSheet from './components/ImportSheet';
 import BulkDeleteSheet from './components/BulkDeleteSheet';
 import Trash from './components/Trash';
 import RestoreSheet from './components/RestoreSheet';
+import MoveSheet from './components/MoveSheet';
 import { Icon } from './components/Icons';
 
 export default function App() {
@@ -222,6 +223,7 @@ function Register() {
         onEditBatch={() => setSheet({ type: 'batch', batch: detail.batch })}
         onAddStudent={() => addStudent(detail.batch.id)}
         onDeleteMany={(ids, done) => setSheet({ type: 'bulkdelete', ids, done })}
+        onMoveMany={(ids, done) => setSheet({ type: 'move', ids, done })}
       />
     );
   } else if (tab === 'batches') {
@@ -381,6 +383,30 @@ function Register() {
           act(() => backend.deleteStudents(ids)).then((ok) =>
             undoable(ok, `${ids.length} student${ids.length === 1 ? '' : 's'} deleted`, () => backend.restoreStudents(ids)),
           );
+        }}
+      />
+    );
+  } else if (sheet?.type === 'move' && detail) {
+    const mv = new Set(sheet.ids);
+    const from = detail.batch;
+    sheetEl = (
+      <MoveSheet
+        students={data.students.filter((s) => mv.has(s.id))}
+        from={from}
+        batches={data.batches}
+        onClose={close}
+        onConfirm={(dest) => {
+          const ids = [...mv];
+          close();
+          sheet.done?.();
+          act(() => backend.moveStudents(ids, dest.id)).then((ok) => {
+            if (ok) {
+              flash(`Moved ${ids.length} student${ids.length === 1 ? '' : 's'} to ${dest.name}`, {
+                label: 'Undo',
+                onClick: () => act(() => backend.moveStudents(ids, from.id), 'Moved back'),
+              });
+            }
+          });
         }}
       />
     );

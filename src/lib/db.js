@@ -144,6 +144,9 @@ const remote = {
     await put('students', plan.students.map((s) => ({ ...strip(s), joined_month: asDate(asMonth(s.joined_month)) })));
     await put('payments', plan.payments.map((p) => ({ ...strip(p), month: asDate(asMonth(p.month)) })));
   },
+  async moveStudents(ids, batchId) {
+    for (const c of chunks(ids)) check(await supabase.from('students').update({ batch_id: batchId }).in('id', c));
+  },
   // Deleting moves things to "Recently deleted" (deleted_at is set); nothing is erased until
   // someone chooses "Delete forever".
   async deleteStudent(id) {
@@ -306,6 +309,12 @@ const demo = {
     d.batches.push(...plan.batches);
     d.students.push(...plan.students.map((s) => ({ ...s, joined_month: asMonth(s.joined_month) })));
     d.payments.push(...plan.payments.map((x) => ({ ...x, month: asMonth(x.month) })));
+    writeDemo(d);
+  },
+  async moveStudents(ids, batchId) {
+    const mv = new Set(ids);
+    const d = readDemo();
+    d.students = d.students.map((x) => (mv.has(x.id) ? { ...x, batch_id: batchId } : x));
     writeDemo(d);
   },
   async deleteStudent(id) {
