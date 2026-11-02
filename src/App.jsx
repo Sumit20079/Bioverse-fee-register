@@ -54,6 +54,11 @@ function Register() {
     toastTimer.current = setTimeout(() => setToast(null), action ? 8000 : 2600);
   }, []);
 
+  // A sheet opening takes over the bottom of the screen, so an old toast shouldn't cover it.
+  useEffect(() => {
+    if (sheet) setToast(null);
+  }, [sheet]);
+
   const reload = useCallback(async () => {
     try {
       setData(await backend.load());
@@ -242,10 +247,7 @@ function Register() {
           onReport={() => setSheet({ type: 'report' })}
           onBackup={backup}
           onRestoreFile={() => setSheet({ type: 'restore' })}
-          onTrash={() => {
-            setToast(null);
-            setSheet({ type: 'trash' });
-          }}
+          onTrash={() => setSheet({ type: 'trash' })}
           trashCount={data.trash.batches.length + data.trash.students.length}
           onSignOut={() => supabase.auth.signOut()}
         />
