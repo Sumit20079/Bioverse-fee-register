@@ -332,3 +332,13 @@ a.btn { display: flex; align-items: center; justify-content: center; text-align:
 .instal-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; border: 0; border-top: 1px solid var(--line); background: #fff; font-size: 14px; text-align: left; }
 .instal-row.on { background: var(--blue-tint); font-weight: 600; }
 .instal-row:disabled { opacity: 0.5; }
+
+/* Recently deleted */
+.trow { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.trow .t { font-weight: 700; }
+.trow .m { font-size: 13px; color: var(--muted); }
+.trow .a { display: flex; gap: 8px; margin-top: 4px; }
+.trow .sbtn { flex: 1; height: 40px; }
+.sbtn.danger { color: var(--danger); border-color: #f0c5c0; }
+.sbtn.danger.armed { background: var(--danger); border-color: var(--danger); color: #fff; }
+.toast button { background: none; border: 0; padding: 0; color: #fff; font-weight: 700; font-size: 14px; text-decoration: underline; white-space: nowrap; }

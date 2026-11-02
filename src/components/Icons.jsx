@@ -27,6 +27,7 @@ export const Icon = {
   Phone: make(<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" />),
   Chat: make(<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" />),
   Download: make(<path d="M12 4v10m0 0l-4-4m4 4l4-4M5 20h14" />),
+  Trash: make(<path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" />),
   Printer: make(<path d="M7 9V4h10v5M7 18H5v-7h14v7h-2M7 14h10v6H7z" />),
   Upload: make(<path d="M12 16V6m0 0l-4 4m4-4l4 4M5 20h14" />),
   Pencil: make(<path d="M4 20l4-1 11-11-3-3L5 16l-1 4z" />),

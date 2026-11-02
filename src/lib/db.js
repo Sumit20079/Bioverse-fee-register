@@ -31,6 +31,50 @@ async function fetchAll(table) {
   return out;
 }
 
+// Turns the raw tables into what the app uses: only live rows, plus the "Recently deleted" lists.
+// A batch deleted together with its students is one group (they share the same deleted_at).
+function shape(raw) {
+  const liveBatches = raw.batches.filter((b) => !b.deleted_at);
+  const liveBatchIds = new Set(liveBatches.map((b) => b.id));
+  const students = raw.students.filter((s) => !s.deleted_at && liveBatchIds.has(s.batch_id));
+  const liveIds = new Set(students.map((s) => s.id));
+  const payments = raw.payments.filter((p) => liveIds.has(p.student_id));
+
+  const payCount = new Map();
+  for (const p of raw.payments) payCount.set(p.student_id, (payCount.get(p.student_id) || 0) + 1);
+  const count = (list) => list.reduce((t, s) => t + (payCount.get(s.id) || 0), 0);
+  const newest = (a, b) => String(b.deleted_at).localeCompare(String(a.deleted_at));
+
+  const goneBatches = raw.batches.filter((b) => b.deleted_at);
+  const inGroup = (s) => goneBatches.some((b) => b.id === s.batch_id && b.deleted_at === s.deleted_at);
+  const trashBatches = goneBatches
+    .map((b) => {
+      const studs = raw.students.filter((s) => s.batch_id === b.id && s.deleted_at === b.deleted_at);
+      return { batch: b, students: studs, paymentCount: count(studs), deleted_at: b.deleted_at };
+    })
+    .sort(newest);
+  const batchById = new Map(raw.batches.map((b) => [b.id, b]));
+  const trashStudents = raw.students
+    .filter((s) => s.deleted_at && !inGroup(s))
+    .map((s) => ({
+      student: s,
+      batchName: batchById.get(s.batch_id)?.name || '',
+      batchGone: !!batchById.get(s.batch_id)?.deleted_at,
+      paymentCount: payCount.get(s.id) || 0,
+      deleted_at: s.deleted_at,
+    }))
+    .sort(newest);
+
+  return { batches: liveBatches, students, payments, trash: { batches: trashBatches, students: trashStudents } };
+}
+
+const stamp = () => new Date().toISOString();
+const chunks = (ids) => {
+  const out = [];
+  for (let i = 0; i < ids.length; i += 100) out.push(ids.slice(i, i + 100));
+  return out;
+};
+
 const check = ({ error }) => {
   if (error) throw error;
 };
@@ -51,11 +95,20 @@ const remote = {
       fetchAll('students'),
       fetchAll('payments'),
     ]);
-    return {
+    return shape({
       batches,
       students: students.map((s) => ({ ...s, joined_month: asMonth(s.joined_month) })),
       payments: payments.map((p) => ({ ...p, month: asMonth(p.month) })),
-    };
+    });
+  },
+  // Everything in the database as plain data, including what is in "Recently deleted".
+  async backup() {
+    const [batches, students, payments] = await Promise.all([
+      fetchAll('batches'),
+      fetchAll('students'),
+      fetchAll('payments'),
+    ]);
+    return { batches, students, payments };
   },
   async saveBatch(b) {
     const row = { name: b.name, fee: b.fee };
@@ -78,21 +131,45 @@ const remote = {
       check(await supabase.from('payments').delete().in('id', ids.slice(i, i + 100)));
     }
   },
-  // The database won't drop a batch that still has students (on delete restrict), so remove the
-  // students first. Their payments go with them (on delete cascade). If the second step fails the
-  // students are already gone, and retrying the delete finishes the job.
-  async deleteBatch(id) {
-    check(await supabase.from('students').delete().eq('batch_id', id));
-    check(await supabase.from('batches').delete().eq('id', id));
-  },
-  // Deleting a student also deletes their payments (on delete cascade).
+  // Deleting moves things to "Recently deleted" (deleted_at is set); nothing is erased until
+  // someone chooses "Delete forever".
   async deleteStudent(id) {
-    check(await supabase.from('students').delete().eq('id', id));
+    await remote.deleteStudents([id]);
   },
   async deleteStudents(ids) {
-    for (let i = 0; i < ids.length; i += 100) {
-      check(await supabase.from('students').delete().in('id', ids.slice(i, i + 100)));
+    const t = stamp();
+    for (const c of chunks(ids)) check(await supabase.from('students').update({ deleted_at: t }).in('id', c));
+  },
+  async deleteBatch(id) {
+    const t = stamp();
+    check(await supabase.from('students').update({ deleted_at: t }).eq('batch_id', id).is('deleted_at', null));
+    check(await supabase.from('batches').update({ deleted_at: t }).eq('id', id));
+  },
+  // Bringing a student back also brings back their batch if that was deleted too.
+  async restoreStudents(ids) {
+    const batchIds = new Set();
+    for (const c of chunks(ids)) {
+      const { data, error } = await supabase.from('students').update({ deleted_at: null }).in('id', c).select('batch_id');
+      if (error) throw error;
+      data.forEach((r) => batchIds.add(r.batch_id));
     }
+    if (batchIds.size) check(await supabase.from('batches').update({ deleted_at: null }).in('id', [...batchIds]));
+  },
+  // Restores the batch and the students that went with it (not ones deleted separately earlier).
+  async restoreBatch(id) {
+    const { data, error } = await supabase.from('batches').select('deleted_at').eq('id', id).single();
+    if (error) throw error;
+    check(await supabase.from('batches').update({ deleted_at: null }).eq('id', id));
+    if (data.deleted_at) check(await supabase.from('students').update({ deleted_at: null }).eq('batch_id', id).eq('deleted_at', data.deleted_at));
+  },
+  // Permanent. Payments go with their student (on delete cascade). The database won't drop a
+  // batch that still has students, so those are removed first.
+  async purgeStudents(ids) {
+    for (const c of chunks(ids)) check(await supabase.from('students').delete().in('id', c));
+  },
+  async purgeBatch(id) {
+    check(await supabase.from('students').delete().eq('batch_id', id));
+    check(await supabase.from('batches').delete().eq('id', id));
   },
 };
 
@@ -173,6 +250,9 @@ function writeDemo(data) {
 
 const demo = {
   async load() {
+    return shape(structuredClone(readDemo()));
+  },
+  async backup() {
     return structuredClone(readDemo());
   },
   async saveBatch(b) {
@@ -208,25 +288,51 @@ const demo = {
     d.payments = d.payments.filter((x) => !gone.has(x.id));
     writeDemo(d);
   },
+  async deleteStudent(id) {
+    await demo.deleteStudents([id]);
+  },
+  async deleteStudents(ids) {
+    const gone = new Set(ids);
+    const t = stamp();
+    const d = readDemo();
+    d.students = d.students.map((x) => (gone.has(x.id) ? { ...x, deleted_at: t } : x));
+    writeDemo(d);
+  },
   async deleteBatch(id) {
+    const t = stamp();
+    const d = readDemo();
+    d.students = d.students.map((x) => (x.batch_id === id && !x.deleted_at ? { ...x, deleted_at: t } : x));
+    d.batches = d.batches.map((b) => (b.id === id ? { ...b, deleted_at: t } : b));
+    writeDemo(d);
+  },
+  async restoreStudents(ids) {
+    const back = new Set(ids);
+    const d = readDemo();
+    const batchIds = new Set(d.students.filter((x) => back.has(x.id)).map((x) => x.batch_id));
+    d.students = d.students.map((x) => (back.has(x.id) ? { ...x, deleted_at: null } : x));
+    d.batches = d.batches.map((b) => (batchIds.has(b.id) ? { ...b, deleted_at: null } : b));
+    writeDemo(d);
+  },
+  async restoreBatch(id) {
+    const d = readDemo();
+    const t = d.batches.find((b) => b.id === id)?.deleted_at;
+    d.batches = d.batches.map((b) => (b.id === id ? { ...b, deleted_at: null } : b));
+    if (t) d.students = d.students.map((x) => (x.batch_id === id && x.deleted_at === t ? { ...x, deleted_at: null } : x));
+    writeDemo(d);
+  },
+  async purgeStudents(ids) {
+    const gone = new Set(ids);
+    const d = readDemo();
+    d.students = d.students.filter((s) => !gone.has(s.id));
+    d.payments = d.payments.filter((p) => !gone.has(p.student_id));
+    writeDemo(d);
+  },
+  async purgeBatch(id) {
     const d = readDemo();
     const gone = new Set(d.students.filter((s) => s.batch_id === id).map((s) => s.id));
     d.payments = d.payments.filter((p) => !gone.has(p.student_id));
     d.students = d.students.filter((s) => s.batch_id !== id);
     d.batches = d.batches.filter((b) => b.id !== id);
-    writeDemo(d);
-  },
-  async deleteStudent(id) {
-    const d = readDemo();
-    d.students = d.students.filter((s) => s.id !== id);
-    d.payments = d.payments.filter((p) => p.student_id !== id);
-    writeDemo(d);
-  },
-  async deleteStudents(ids) {
-    const gone = new Set(ids);
-    const d = readDemo();
-    d.students = d.students.filter((s) => !gone.has(s.id));
-    d.payments = d.payments.filter((p) => !gone.has(p.student_id));
     writeDemo(d);
   },
 };

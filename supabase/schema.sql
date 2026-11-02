@@ -5,6 +5,8 @@ create table public.batches (
   owner_id   uuid not null default auth.uid() references auth.users (id) on delete cascade,
   name       text not null,
   fee        integer not null check (fee >= 0),
+  -- set when moved to "Recently deleted"; null while the batch is in use
+  deleted_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -17,6 +19,7 @@ create table public.students (
   parent_phone text not null default '',
   joined_month date not null check (joined_month = date_trunc('month', joined_month)::date),
   active       boolean not null default true,
+  deleted_at   timestamptz,
   created_at   timestamptz not null default now()
 );
 

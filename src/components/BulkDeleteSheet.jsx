@@ -11,9 +11,9 @@ export default function BulkDeleteSheet({ students, paymentCount, onConfirm, onC
     <Sheet title={`Delete ${n} student${n === 1 ? '' : 's'}?`} onClose={onClose}>
       <p role="alert">
         {paymentCount > 0
-          ? `They will be removed together with ${paymentCount} payment record${paymentCount === 1 ? '' : 's'}. `
-          : 'They will be removed. '}
-        This can&apos;t be undone.
+          ? `They and their ${paymentCount} payment record${paymentCount === 1 ? '' : 's'} will move to Recently deleted. `
+          : 'They will move to Recently deleted. '}
+        You can restore them from the Overview screen.
       </p>
       <ul className="namelist">
         {shown.map((s) => (

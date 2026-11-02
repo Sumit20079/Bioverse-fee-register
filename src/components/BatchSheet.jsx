@@ -27,11 +27,11 @@ export default function BatchSheet({ batch, studentCount = 0, paymentCount = 0, 
     return (
       <Sheet title="Delete this batch?" onClose={onClose}>
         <p role="alert">
-          <b>{batch.name}</b> will be removed
+          <b>{batch.name}</b>
           {studentCount > 0
-            ? `, along with its ${studentCount} student${studentCount === 1 ? '' : 's'} and ${paymentCount} payment record${paymentCount === 1 ? '' : 's'}`
-            : ''}
-          . This can&apos;t be undone.
+            ? `, with its ${studentCount} student${studentCount === 1 ? '' : 's'} and ${paymentCount} payment record${paymentCount === 1 ? '' : 's'},`
+            : ''}{' '}
+          will move to Recently deleted. You can restore it from the Overview screen.
         </p>
         {studentCount > 0 && (
           <p className="hint">Only want to stop a class? Cancel, open each student and untick “Still attending” to keep their history.</p>

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { backend, isDemo, supabase } from './lib/db';
-import { currentMonth, longDateLabel, monthLabel, monthsBetween } from './lib/dates';
+import { currentMonth, longDateLabel, monthLabel, monthsBetween, todayISO } from './lib/dates';
 import { dueList, monthView } from './lib/calc';
-import { receiptContact, receiptText, waLink } from './lib/format';
+import { download, receiptContact, receiptText, waLink } from './lib/format';
 import Login from './components/Login';
 import Overview from './components/Overview';
 import Batches from './components/Batches';
@@ -16,6 +16,7 @@ import StudentSheet from './components/StudentSheet';
 import BatchSheet from './components/BatchSheet';
 import ImportSheet from './components/ImportSheet';
 import BulkDeleteSheet from './components/BulkDeleteSheet';
+import Trash from './components/Trash';
 import { Icon } from './components/Icons';
 
 export default function App() {
@@ -44,7 +45,8 @@ function Register() {
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
 
-  // `action` is an optional { label, href } link shown inside the toast (e.g. send a receipt).
+  // `action` is an optional { label, href } link or { label, onClick } button shown inside the toast
+  // (e.g. send a receipt, or undo a delete).
   const flash = useCallback((msg, action) => {
     setToast({ msg, action });
     clearTimeout(toastTimer.current);
@@ -169,6 +171,21 @@ function Register() {
     );
     return href ? { label: `Send receipt to ${c.role.toLowerCase()}`, href } : undefined;
   };
+  // After a delete: say so, with an Undo that brings it straight back.
+  const undoable = (ok, msg, restore) => {
+    if (ok) flash(msg, { label: 'Undo', onClick: () => act(restore, 'Restored') });
+    return ok;
+  };
+  const backup = async () => {
+    try {
+      const dump = await backend.backup();
+      const out = { app: 'bioverse-fee-register', version: 1, exported_at: new Date().toISOString(), ...dump };
+      download(`fee-register-backup-${todayISO()}.json`, JSON.stringify(out, null, 2), 'application/json');
+      flash(`Backup saved: ${dump.students.length} students, ${dump.payments.length} payments`);
+    } catch (e) {
+      flash('Backup failed: ' + (e.message || e));
+    }
+  };
   const newBatch = () => setSheet({ type: 'batch' });
   const addStudent = (defaultBatchId) => {
     if (!data.batches.length) return setSheet({ type: 'batch' });
@@ -222,6 +239,12 @@ function Register() {
           onNewBatch={newBatch}
           onImport={() => setSheet({ type: 'import' })}
           onReport={() => setSheet({ type: 'report' })}
+          onBackup={backup}
+          onTrash={() => {
+            setToast(null);
+            setSheet({ type: 'trash' });
+          }}
+          trashCount={data.trash.batches.length + data.trash.students.length}
           onSignOut={() => supabase.auth.signOut()}
         />
         {view.batches.length > 0 && (
@@ -303,7 +326,11 @@ function Register() {
         paymentCount={sheet.student ? data.payments.filter((p) => p.student_id === sheet.student.id).length : 0}
         onClose={close}
         onSave={(s) => closeAfter(act(() => backend.saveStudent(s), s.id ? 'Student updated' : 'Student added'))}
-        onDelete={(id) => closeAfter(act(() => backend.deleteStudent(id), 'Student deleted'))}
+        onDelete={(id) =>
+          closeAfter(act(() => backend.deleteStudent(id))).then((ok) =>
+            undoable(ok, 'Student deleted', () => backend.restoreStudents([id])),
+          )
+        }
         onHistory={(s) => setSheet({ type: 'history', studentId: s.id })}
       />
     );
@@ -323,9 +350,9 @@ function Register() {
         onClose={close}
         onSave={(b) => closeAfter(act(() => backend.saveBatch(b), b.id ? 'Batch updated' : 'Batch created'))}
         onDelete={(id) =>
-          closeAfter(act(() => backend.deleteBatch(id), 'Batch deleted')).then((ok) => {
+          closeAfter(act(() => backend.deleteBatch(id))).then((ok) => {
             if (ok && batchId === id) setBatchId(null);
-            return ok;
+            return undoable(ok, 'Batch deleted', () => backend.restoreBatch(id));
           })
         }
       />
@@ -346,8 +373,22 @@ function Register() {
           }));
           close();
           sheet.done?.();
-          act(() => backend.deleteStudents([...gone]), `${gone.size} student${gone.size === 1 ? '' : 's'} deleted`);
+          const ids = [...gone];
+          act(() => backend.deleteStudents(ids)).then((ok) =>
+            undoable(ok, `${ids.length} student${ids.length === 1 ? '' : 's'} deleted`, () => backend.restoreStudents(ids)),
+          );
         }}
+      />
+    );
+  } else if (sheet?.type === 'trash') {
+    sheetEl = (
+      <Trash
+        trash={data.trash}
+        onClose={close}
+        onRestoreStudent={(id) => act(() => backend.restoreStudents([id]), 'Student restored')}
+        onRestoreBatch={(id) => act(() => backend.restoreBatch(id), 'Batch restored')}
+        onPurgeStudent={(id) => act(() => backend.purgeStudents([id]), 'Deleted forever')}
+        onPurgeBatch={(id) => act(() => backend.purgeBatch(id), 'Deleted forever')}
       />
     );
   } else if (sheet?.type === 'import') {
@@ -389,10 +430,20 @@ function Register() {
       {toast && (
         <div className="toast" role="status">
           <span>{toast.msg}</span>
-          {toast.action && (
+          {toast.action?.href && (
             <a href={toast.action.href} target="_blank" rel="noreferrer" onClick={() => setToast(null)}>
               {toast.action.label}
             </a>
+          )}
+          {toast.action?.onClick && (
+            <button
+              onClick={() => {
+                setToast(null);
+                toast.action.onClick();
+              }}
+            >
+              {toast.action.label}
+            </button>
           )}
         </div>
       )}

@@ -40,11 +40,11 @@ export default function StudentSheet({ student, batches, defaultBatchId, month, 
     return (
       <Sheet title="Delete this student?" onClose={onClose}>
         <p role="alert">
-          <b>{student.name}</b> will be removed
+          <b>{student.name}</b>
           {paymentCount > 0
-            ? `, together with ${paymentCount} payment record${paymentCount === 1 ? '' : 's'}`
-            : ''}
-          . This can&apos;t be undone.
+            ? ` and their ${paymentCount} payment record${paymentCount === 1 ? '' : 's'}`
+            : ''}{' '}
+          will move to Recently deleted. You can restore them from the Overview screen.
         </p>
         <p className="hint">If they just left the class, cancel and untick “Still attending” instead. Their payment history stays.</p>
         <button className="btn" style={{ background: 'var(--danger)' }} disabled={busy} onClick={remove}>

@@ -80,7 +80,8 @@ const esc = (v) => {
 export const toCsv = (rows) => rows.map((r) => r.map(esc).join(',')).join('\r\n');
 
 export function download(filename, text, mime = 'text/csv;charset=utf-8') {
-  const blob = new Blob(['﻿' + text], { type: mime });
+  // the byte-order mark helps Excel read CSV; it would break a JSON file
+  const blob = new Blob([mime.startsWith('text/csv') ? '﻿' + text : text], { type: mime });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = filename;
