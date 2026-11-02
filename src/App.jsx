@@ -21,6 +21,10 @@ import RestoreSheet from './components/RestoreSheet';
 import MoveSheet from './components/MoveSheet';
 import { Icon } from './components/Icons';
 
+// The newest deleted_at among everything in Recently deleted.
+const newestInBin = (trash) =>
+  [...trash.batches, ...trash.students].reduce((a, t) => (!a || Date.parse(t.deleted_at) > Date.parse(a) ? t.deleted_at : a), null);
+
 export default function App() {
   // undefined = still checking the saved login
   const [session, setSession] = useState(isDemo ? { demo: true } : undefined);
@@ -434,19 +438,17 @@ function Register() {
         onRestoreBatch={(id) => act(() => backend.restoreBatch(id), 'Batch restored')}
         onPurgeStudent={(id) => act(() => backend.purgeStudents([id]), 'Deleted forever')}
         onPurgeBatch={(id) => act(() => backend.purgeBatch(id), 'Deleted forever')}
-        onRestoreAll={() =>
-          act(async () => {
-            for (const t of data.trash.batches) await backend.restoreBatch(t.batch.id);
-            if (data.trash.students.length) await backend.restoreStudents(data.trash.students.map((t) => t.student.id));
-          }, 'Everything restored')
-        }
-        onPurgeAll={() =>
-          act(async () => {
-            const ids = [...data.trash.students.map((t) => t.student.id), ...data.trash.batches.flatMap((t) => t.students.map((s) => s.id))];
-            if (ids.length) await backend.purgeStudents(ids);
-            for (const t of data.trash.batches) await backend.purgeBatch(t.batch.id);
-          }, 'Recently deleted emptied')
-        }
+        onRestoreAll={() => {
+          flash('Restoring…');
+          act(() => backend.restoreTrash(newestInBin(data.trash)), 'Everything restored');
+        }}
+        onPurgeAll={() => {
+          // empty the list on screen at once; the server catches up behind
+          const upTo = newestInBin(data.trash);
+          setData((d) => ({ ...d, trash: { batches: [], students: [] } }));
+          flash('Emptying…');
+          act(() => backend.purgeTrash(upTo), 'Recently deleted emptied');
+        }}
       />
     );
   } else if (sheet?.type === 'import') {

@@ -154,7 +154,7 @@ const remote = {
   },
   async deleteStudents(ids) {
     const t = stamp();
-    for (const c of chunks(ids)) check(await supabase.from('students').update({ deleted_at: t }).in('id', c));
+    await Promise.all(chunks(ids).map(async (c) => check(await supabase.from('students').update({ deleted_at: t }).in('id', c))));
   },
   async deleteBatch(id) {
     const t = stamp();
@@ -164,11 +164,13 @@ const remote = {
   // Bringing a student back also brings back their batch if that was deleted too.
   async restoreStudents(ids) {
     const batchIds = new Set();
-    for (const c of chunks(ids)) {
-      const { data, error } = await supabase.from('students').update({ deleted_at: null }).in('id', c).select('batch_id');
-      if (error) throw error;
-      data.forEach((r) => batchIds.add(r.batch_id));
-    }
+    await Promise.all(
+      chunks(ids).map(async (c) => {
+        const { data, error } = await supabase.from('students').update({ deleted_at: null }).in('id', c).select('batch_id');
+        if (error) throw error;
+        data.forEach((r) => batchIds.add(r.batch_id));
+      }),
+    );
     if (batchIds.size) check(await supabase.from('batches').update({ deleted_at: null }).in('id', [...batchIds]));
   },
   // Restores the batch and the students that went with it (not ones deleted separately earlier).
@@ -181,7 +183,17 @@ const remote = {
   // Permanent. Payments go with their student (on delete cascade). The database won't drop a
   // batch that still has students, so those are removed first.
   async purgeStudents(ids) {
-    for (const c of chunks(ids)) check(await supabase.from('students').delete().in('id', c));
+    await Promise.all(chunks(ids).map(async (c) => check(await supabase.from('students').delete().in('id', c))));
+  },
+  // Whole bin in two requests instead of hundreds. `upTo` is the newest deleted_at the person was
+  // looking at, so something deleted on another phone a moment later is left alone.
+  async purgeTrash(upTo) {
+    check(await supabase.from('students').delete().not('deleted_at', 'is', null).lte('deleted_at', upTo));
+    check(await supabase.from('batches').delete().not('deleted_at', 'is', null).lte('deleted_at', upTo));
+  },
+  async restoreTrash(upTo) {
+    check(await supabase.from('batches').update({ deleted_at: null }).not('deleted_at', 'is', null).lte('deleted_at', upTo));
+    check(await supabase.from('students').update({ deleted_at: null }).not('deleted_at', 'is', null).lte('deleted_at', upTo));
   },
   async purgeBatch(id) {
     check(await supabase.from('students').delete().eq('batch_id', id));
@@ -347,6 +359,22 @@ const demo = {
     const t = d.batches.find((b) => b.id === id)?.deleted_at;
     d.batches = d.batches.map((b) => (b.id === id ? { ...b, deleted_at: null } : b));
     if (t) d.students = d.students.map((x) => (x.batch_id === id && x.deleted_at === t ? { ...x, deleted_at: null } : x));
+    writeDemo(d);
+  },
+  async purgeTrash(upTo) {
+    const old = (x) => x.deleted_at && Date.parse(x.deleted_at) <= Date.parse(upTo);
+    const d = readDemo();
+    const gone = new Set(d.students.filter(old).map((s) => s.id));
+    d.payments = d.payments.filter((p) => !gone.has(p.student_id));
+    d.students = d.students.filter((s) => !gone.has(s.id));
+    d.batches = d.batches.filter((b) => !old(b));
+    writeDemo(d);
+  },
+  async restoreTrash(upTo) {
+    const old = (x) => x.deleted_at && Date.parse(x.deleted_at) <= Date.parse(upTo);
+    const d = readDemo();
+    d.batches = d.batches.map((b) => (old(b) ? { ...b, deleted_at: null } : b));
+    d.students = d.students.map((s) => (old(s) ? { ...s, deleted_at: null } : s));
     writeDemo(d);
   },
   async purgeStudents(ids) {
