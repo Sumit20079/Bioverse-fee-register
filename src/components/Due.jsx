@@ -4,12 +4,14 @@ import { Icon } from './Icons';
 import { monthLabel, monthsText } from '../lib/dates';
 import { contactsOf, reminderText, rupees, telLink, waLink } from '../lib/format';
 import { useWide } from '../lib/useWide';
+import { useCountUp } from '../lib/useCountUp';
 
 export default function Due({ list, batches, month, setMonth, onPay }) {
   const [batchId, setBatchId] = useState('all');
   const wide = useWide();
   const shown = useMemo(() => list.filter((d) => batchId === 'all' || d.batch.id === batchId), [list, batchId]);
   const total = shown.reduce((t, d) => t + d.amount, 0);
+  const shownTotal = useCountUp(total);
 
   // One entry per student, with a WhatsApp/call link for each number we have.
   const items = shown.map((d) => {
@@ -75,7 +77,7 @@ export default function Due({ list, batches, month, setMonth, onPay }) {
       <section className="dues-hero">
         <div>
           <div className="k">Still to collect</div>
-          <div className="v">{rupees(total)}</div>
+          <div className="v">{rupees(shownTotal)}</div>
         </div>
         <div className="c">
           {shown.length} student{shown.length === 1 ? '' : 's'}

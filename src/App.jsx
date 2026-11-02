@@ -20,11 +20,21 @@ import BulkDeleteSheet from './components/BulkDeleteSheet';
 import Trash from './components/Trash';
 import RestoreSheet from './components/RestoreSheet';
 import MoveSheet from './components/MoveSheet';
+import Leaving from './components/Leaving';
 import { Icon } from './components/Icons';
 
 // The newest deleted_at among everything in Recently deleted.
 const newestInBin = (trash) =>
   [...trash.batches, ...trash.students].reduce((a, t) => (!a || Date.parse(t.deleted_at) > Date.parse(a) ? t.deleted_at : a), null);
+
+// A tiny tick on phones that support it.
+const buzz = () => {
+  try {
+    navigator.vibrate?.(10);
+  } catch {
+    /* not supported */
+  }
+};
 
 export default function App() {
   // undefined = still checking the saved login
@@ -295,6 +305,7 @@ function Register() {
           paymentsByMonth={byMonth}
           onClose={closePay}
           onSave={(p) => {
+            buzz();
             showPayment(p);
             closePay();
             const others = (byMonth.get(p.month) || []).filter((x) => x.id !== p.id).reduce((t, x) => t + x.amount, 0);
@@ -473,6 +484,7 @@ function Register() {
       </div>
 
       <nav className="nav" aria-label="Main">
+        <span className="nav-ind" style={{ '--i': tab === 'search' ? 2 : tab === 'collected' ? 3 : tab === 'due' ? 4 : tab === 'batches' || batchId ? 1 : 0 }} aria-hidden="true" />
         <button className={tab === 'overview' && !batchId ? 'on' : ''} onClick={() => goTab('overview')}>
           <Icon.Home width={22} height={22} /> Overview
         </button>
@@ -491,28 +503,30 @@ function Register() {
         </button>
       </nav>
 
-      {sheetEl}
+      <Leaving>{sheetEl}</Leaving>
       {sheet?.type === 'report' && <Report view={view} month={month} onClose={close} />}
-      {toast && (
-        <div className="toast" role="status">
-          <span>{toast.msg}</span>
-          {toast.action?.href && (
-            <a href={toast.action.href} target="_blank" rel="noreferrer" onClick={() => setToast(null)}>
-              {toast.action.label}
-            </a>
-          )}
-          {toast.action?.onClick && (
-            <button
-              onClick={() => {
-                setToast(null);
-                toast.action.onClick();
-              }}
-            >
-              {toast.action.label}
-            </button>
-          )}
-        </div>
-      )}
+      <Leaving ms={200}>
+        {toast && (
+          <div className="toast" role="status">
+            <span>{toast.msg}</span>
+            {toast.action?.href && (
+              <a href={toast.action.href} target="_blank" rel="noreferrer" onClick={() => setToast(null)}>
+                {toast.action.label}
+              </a>
+            )}
+            {toast.action?.onClick && (
+              <button
+                onClick={() => {
+                  setToast(null);
+                  toast.action.onClick();
+                }}
+              >
+                {toast.action.label}
+              </button>
+            )}
+          </div>
+        )}
+      </Leaving>
     </div>
   );
 }

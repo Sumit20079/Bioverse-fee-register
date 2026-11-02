@@ -1,9 +1,42 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useCountUp } from '../lib/useCountUp';
 import MonthNav from './MonthNav';
 import { Icon } from './Icons';
 import { dateLabel, monthShort } from '../lib/dates';
 import { rupees } from '../lib/format';
 import { useWide } from '../lib/useWide';
+
+// The button that shows (and opens) a month's payment status. It pops when the status changes,
+// not when the list first draws.
+function StatusPill({ status, name, onClick }) {
+  const prev = useRef(status);
+  const [pop, setPop] = useState(false);
+  useEffect(() => {
+    if (prev.current !== status) {
+      prev.current = status;
+      setPop(true);
+    }
+  }, [status]);
+  if (status === 'paid') {
+    return (
+      <button key="paid" className={'pill paid' + (pop ? ' pop' : '')} aria-label={`Paid. Edit payment for ${name}`} onClick={onClick}>
+        <Icon.Check width={14} height={14} strokeWidth={2.4} /> Paid
+      </button>
+    );
+  }
+  if (status === 'part') {
+    return (
+      <button key="part" className={'pill part' + (pop ? ' pop' : '')} aria-label={`Part paid. Add payment for ${name}`} onClick={onClick}>
+        Part paid
+      </button>
+    );
+  }
+  return (
+    <button key="go" className={'pill go' + (pop ? ' pop' : '')} onClick={onClick}>
+      Mark paid
+    </button>
+  );
+}
 
 export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditStudent, onEditBatch, onAddStudent, onDeleteMany, onMoveMany }) {
   const [filter, setFilterRaw] = useState('all');
@@ -11,6 +44,8 @@ export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditS
   const [picked, setPicked] = useState(() => new Set());
   const wide = useWide();
   const { batch } = v;
+  const shownCollected = useCountUp(v.collected);
+  const shownPending = useCountUp(v.pending);
   const rows = v.rows.filter((r) => (filter === 'paid' ? !r.owes : filter === 'due' ? r.owes : true));
 
   // Only ever act on rows that are on screen, so a hidden student can't be deleted by accident.
@@ -63,11 +98,11 @@ export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditS
       <div className="card summary">
         <div>
           <div className="k">Collected</div>
-          <div className="v">{rupees(v.collected)}</div>
+          <div className="v">{rupees(shownCollected)}</div>
         </div>
         <div className="r">
           <div className="k">Pending</div>
-          <div className="v">{rupees(v.pending)}</div>
+          <div className="v">{rupees(shownPending)}</div>
         </div>
       </div>
 
@@ -196,19 +231,7 @@ export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditS
                   <div className="n">{student.name}</div>
                   <div className="d">{detail(row)}</div>
                 </button>
-                {status === 'paid' ? (
-                  <button className="pill paid" aria-label={`Paid. Edit payment for ${student.name}`} onClick={() => onPay(student, month)}>
-                    <Icon.Check width={14} height={14} strokeWidth={2.4} /> Paid
-                  </button>
-                ) : status === 'part' ? (
-                  <button className="pill due" aria-label={`Part paid. Add payment for ${student.name}`} onClick={() => onPay(student, month)}>
-                    Part paid
-                  </button>
-                ) : (
-                  <button className="pill due" onClick={() => onPay(student, month)}>
-                    Mark paid
-                  </button>
-                )}
+                <StatusPill status={status} name={student.name} onClick={() => onPay(student, month)} />
               </div>
             );
           })}

@@ -23,7 +23,7 @@ export const Icon = {
   List: make(<path d="M4 6h16M4 12h16M4 18h10" />),
   Clock: make(<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>),
   Plus: make(<path d="M12 5v14M5 12h14" />),
-  Check: make(<path d="M5 12l5 5 9-10" />),
+  Check: make(<path d="M5 12l5 5 9-10" pathLength="1" />),
   Phone: make(<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" />),
   Chat: make(<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" />),
   Download: make(<path d="M12 4v10m0 0l-4-4m4 4l4-4M5 20h14" />),
