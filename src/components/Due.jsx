@@ -73,7 +73,7 @@ export default function Due({ list, batches, month, setMonth, onPay }) {
           <h1>Who hasn&apos;t paid</h1>
         </div>
         <div className="navpair">
-          <MonthNav month={month} onChange={setMonth} />
+          <MonthNav month={month} onChange={setMonth} animate />
           <SettingsBtn />
         </div>
       </header>

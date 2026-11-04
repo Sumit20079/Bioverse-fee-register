@@ -1,6 +1,7 @@
 import SettingsBtn from './SettingsBtn';
 import { useMemo, useState } from 'react';
 import { Icon } from './Icons';
+import { lean } from '../lib/lean';
 import { KINDS, canGoNext, periodOf, step, summarise } from '../lib/collections';
 import { dateLabel, monthShort, todayISO } from '../lib/dates';
 import { rupees } from '../lib/format';
@@ -51,11 +52,11 @@ export default function Collected({ data, onOpen }) {
       </div>
 
       <div className="pernav">
-        <button className="iconbtn" aria-label="Earlier" onClick={() => move(-1)}>
+        <button className="iconbtn" aria-label="Earlier" onClick={(e) => { lean(e.currentTarget, -1); move(-1); }}>
           <Icon.Left width={22} height={22} />
         </button>
         <b>{period.label}</b>
-        <button className="iconbtn" aria-label="Later" disabled={!canGoNext(kind, anchor)} onClick={() => move(1)}>
+        <button className="iconbtn" aria-label="Later" disabled={!canGoNext(kind, anchor)} onClick={(e) => { lean(e.currentTarget, 1); move(1); }}>
           <Icon.Right width={22} height={22} />
         </button>
       </div>
