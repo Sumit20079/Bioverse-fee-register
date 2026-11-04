@@ -21,6 +21,8 @@ import Trash from './components/Trash';
 import RestoreSheet from './components/RestoreSheet';
 import MoveSheet from './components/MoveSheet';
 import Leaving from './components/Leaving';
+import SettingsSheet from './components/SettingsSheet';
+import { SettingsContext } from './components/SettingsBtn';
 import AppearanceSheet from './components/AppearanceSheet';
 import { loadLook, applyLook, saveLook, watchSystem } from './lib/look';
 import { Icon } from './components/Icons';
@@ -180,6 +182,8 @@ function Register() {
   if (!data) return <div className="center muted">Loading…</div>;
 
   const close = () => setSheet(null);
+  // sheets opened from Settings go back to Settings when closed
+  const closeBack = () => (sheet?.from === 'settings' ? setSheet({ type: 'settings' }) : setSheet(null));
   const closeAfter = (promise) => promise.then((ok) => {
     if (ok) close();
     return ok;
@@ -444,7 +448,7 @@ function Register() {
     sheetEl = (
       <RestoreSheet
         loadCurrent={() => backend.backup()}
-        onClose={close}
+        onClose={closeBack}
         onRestore={(plan) =>
           closeAfter(
             act(
@@ -455,13 +459,26 @@ function Register() {
         }
       />
     );
+  } else if (sheet?.type === 'settings') {
+    sheetEl = (
+      <SettingsSheet
+        onClose={close}
+        onAppearance={() => setSheet({ type: 'appearance', from: 'settings' })}
+        onBackup={backup}
+        onRestore={() => setSheet({ type: 'restore', from: 'settings' })}
+        onTrash={() => setSheet({ type: 'trash', from: 'settings' })}
+        trashCount={data.trash.batches.length + data.trash.students.length}
+        isDemo={isDemo}
+        onSignOut={() => supabase.auth.signOut()}
+      />
+    );
   } else if (sheet?.type === 'appearance') {
-    sheetEl = <AppearanceSheet look={look} onChange={changeLook} onClose={close} />;
+    sheetEl = <AppearanceSheet look={look} onChange={changeLook} onClose={closeBack} />;
   } else if (sheet?.type === 'trash') {
     sheetEl = (
       <Trash
         trash={data.trash}
-        onClose={close}
+        onClose={closeBack}
         onRestoreStudent={(id) => act(() => backend.restoreStudents([id]), 'Student restored')}
         onRestoreBatch={(id) => act(() => backend.restoreBatch(id), 'Batch restored')}
         onPurgeStudent={(id) => act(() => backend.purgeStudents([id]), 'Deleted forever')}
@@ -494,7 +511,7 @@ function Register() {
   return (
     <div className="app">
       <div className="screen" key={`${tab}-${batchId || ''}`}>
-        {body}
+        <SettingsContext.Provider value={() => setSheet({ type: 'settings' })}>{body}</SettingsContext.Provider>
       </div>
 
       <nav className="nav" aria-label="Main">

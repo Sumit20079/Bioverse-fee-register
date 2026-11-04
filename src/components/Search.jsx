@@ -1,3 +1,4 @@
+import SettingsBtn from './SettingsBtn';
 import { useMemo, useState } from 'react';
 import { Icon } from './Icons';
 import { rupees } from '../lib/format';
@@ -31,6 +32,7 @@ export default function Search({ students, batches, dues, onOpen }) {
           <div className="kicker">{students.length} students</div>
           <h1>Search</h1>
         </div>
+        <SettingsBtn />
       </header>
 
       <div className="searchbar">

@@ -1,3 +1,4 @@
+import SettingsBtn from './SettingsBtn';
 import MonthNav from './MonthNav';
 import Donut from './Donut';
 import { Icon } from './Icons';
@@ -15,7 +16,10 @@ export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, o
           <div className="kicker">Fee register</div>
           <h1>{monthLabel(month)}</h1>
         </div>
-        <MonthNav month={month} onChange={setMonth} />
+        <div className="navpair">
+          <MonthNav month={month} onChange={setMonth} />
+          <SettingsBtn />
+        </div>
       </header>
 
       {isDemo && (
@@ -89,23 +93,6 @@ export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, o
         <button className="tool" onClick={onImport} disabled={!view.batches.length}>
           <Icon.Upload /> Import students
         </button>
-        <button className="tool" onClick={onBackup}>
-          <Icon.Download /> Download backup
-        </button>
-        <button className="tool" onClick={onRestoreFile}>
-          <Icon.Upload /> Restore from backup
-        </button>
-        <button className="tool" onClick={onTrash}>
-          <Icon.Trash /> Recently deleted{trashCount > 0 ? ` (${trashCount})` : ''}
-        </button>
-        <button className="tool" onClick={onAppearance}>
-          <Icon.Palette /> Appearance
-        </button>
-        {!isDemo && (
-          <button className="tool" onClick={onSignOut}>
-            <Icon.Out /> Sign out
-          </button>
-        )}
       </div>
     </>
   );

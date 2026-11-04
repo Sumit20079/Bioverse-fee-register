@@ -1,3 +1,4 @@
+import SettingsBtn from './SettingsBtn';
 import { Icon } from './Icons';
 import { rupees } from '../lib/format';
 
@@ -10,9 +11,12 @@ export default function Batches({ view, onOpenBatch, onEditBatch, onNewBatch }) 
           <div className="kicker">Manage</div>
           <h1>Batches</h1>
         </div>
-        <button className="sbtn primary" onClick={onNewBatch}>
-          <Icon.Plus /> New batch
-        </button>
+        <div className="navpair">
+          <button className="sbtn primary" onClick={onNewBatch}>
+            <Icon.Plus /> New batch
+          </button>
+          <SettingsBtn />
+        </div>
       </header>
 
       {view.batches.length === 0 ? (

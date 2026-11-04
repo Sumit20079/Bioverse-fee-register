@@ -1,3 +1,4 @@
+import SettingsBtn from './SettingsBtn';
 import { useMemo, useState } from 'react';
 import { Icon } from './Icons';
 import { KINDS, canGoNext, periodOf, step, summarise } from '../lib/collections';
@@ -38,6 +39,7 @@ export default function Collected({ data, onOpen }) {
           <div className="kicker">Money in</div>
           <h1>Collected</h1>
         </div>
+        <SettingsBtn />
       </header>
 
       <div className="per" role="group" aria-label="Period">

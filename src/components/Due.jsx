@@ -1,3 +1,4 @@
+import SettingsBtn from './SettingsBtn';
 import { useMemo, useState } from 'react';
 import MonthNav from './MonthNav';
 import { Icon } from './Icons';
@@ -71,7 +72,10 @@ export default function Due({ list, batches, month, setMonth, onPay }) {
           <div className="kicker">Up to {monthLabel(month)}</div>
           <h1>Who hasn&apos;t paid</h1>
         </div>
-        <MonthNav month={month} onChange={setMonth} />
+        <div className="navpair">
+          <MonthNav month={month} onChange={setMonth} />
+          <SettingsBtn />
+        </div>
       </header>
 
       <section className="dues-hero">
