@@ -547,3 +547,26 @@ input.bright::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; 
   .head .navpair { gap: 6px; flex: none; }
   .head .navpair .iconbtn { width: 40px; height: 40px; }
 }
+
+/* gear: one full clockwise turn that eases out */
+@keyframes gearspin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+.gearbtn svg { transition: none; }
+.gearbtn.spin svg { animation: gearspin 0.65s cubic-bezier(0.25, 0.8, 0.25, 1); }
+.gearbtn.spin { background: var(--primary-tint); color: var(--primary-ink); }
+
+/* sheets glide up and settle, instead of snapping in */
+@keyframes sheetin { from { transform: translateY(70%); opacity: 0.4; } to { transform: none; opacity: 1; } }
+.sheet { animation: sheetin 0.55s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.scrim { animation: fade 0.35s ease backwards; }
+@media (min-width: 900px) { .sheet { animation-name: pop; animation-duration: 0.35s; } }
+
+/* gear turn + softer panel entrance */
+.gear { display: inline-flex; transition: transform 0.7s cubic-bezier(0.3, 1.25, 0.4, 1); }
+.gearbtn:active .gear { transition-duration: 0.15s; }
+.sheet { animation-duration: 0.5s; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+.scrim { animation-duration: 0.35s; }
+@keyframes setin { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.setgroup { animation: setin 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.setgroup:nth-child(2) { animation-delay: 0.12s; }
+.setgroup:nth-child(3) { animation-delay: 0.19s; }
+.setgroup:nth-child(4) { animation-delay: 0.26s; }
