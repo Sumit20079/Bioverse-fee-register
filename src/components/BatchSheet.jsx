@@ -1,19 +1,23 @@
 import { useState } from 'react';
 import Sheet from './Sheet';
+import { addMonths, currentMonth, monthLabel } from '../lib/dates';
 
 export default function BatchSheet({ batch, studentCount = 0, paymentCount = 0, onSave, onDelete, onClose }) {
   const editing = Boolean(batch);
   const [name, setName] = useState(batch?.name || '');
   const [fee, setFee] = useState(batch ? String(batch.fee) : '');
+  const [from, setFrom] = useState(currentMonth());
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
+  const changed = editing && fee !== '' && Math.round(Number(fee)) !== batch.fee;
+  const fromOptions = Array.from({ length: 14 }, (_, i) => addMonths(currentMonth(), 1 - i)); // next month back to a year ago
   const valid = name.trim() && fee !== '' && Number(fee) >= 0;
 
   async function save(e) {
     e.preventDefault();
     setBusy(true);
-    const ok = await onSave({ id: batch?.id, name: name.trim(), fee: Math.round(Number(fee)) });
+    const ok = await onSave({ id: batch?.id, name: name.trim(), fee: Math.round(Number(fee)), from });
     if (!ok) setBusy(false);
   }
 
@@ -56,8 +60,21 @@ export default function BatchSheet({ batch, studentCount = 0, paymentCount = 0, 
         <div className="field">
           <label htmlFor="b-fee">Monthly fee (₹)</label>
           <input id="b-fee" inputMode="numeric" value={fee} placeholder="1500" onChange={(e) => setFee(e.target.value.replace(/[^\d]/g, ''))} />
-          {editing && <p className="hint">Changing the fee only affects months not yet paid. Recorded payments keep their amount.</p>}
+          {editing && !changed && <p className="hint">Pick a new fee and choose which month it starts from. Earlier months keep the old fee.</p>}
         </div>
+        {changed && (
+          <div className="field">
+            <label htmlFor="b-from">New fee applies from</label>
+            <select id="b-from" value={from} onChange={(e) => setFrom(e.target.value)}>
+              {fromOptions.map((m) => (
+                <option key={m} value={m}>
+                  {monthLabel(m)}{m === currentMonth() ? ' (this month)' : ''}
+                </option>
+              ))}
+            </select>
+            <p className="hint">Months before {monthLabel(from)} stay at {batch.fee_history?.length ? 'their old fees' : `₹${batch.fee}`}. Payments already recorded never change.</p>
+          </div>
+        )}
         <button className="btn" disabled={!valid || busy}>{editing ? 'Save changes' : 'Create batch'}</button>
       </form>
 

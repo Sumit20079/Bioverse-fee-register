@@ -1,5 +1,6 @@
 import { Icon } from './Icons';
 import { dateLabel, monthLabel } from '../lib/dates';
+import { feeFor } from '../lib/calc';
 import { download, rupees, toCsv } from '../lib/format';
 
 export default function Report({ view, month, onClose }) {
@@ -48,7 +49,7 @@ export default function Report({ view, month, onClose }) {
           {view.batches.map((v) => (
             <section key={v.batch.id}>
               <h3>
-                {v.batch.name} <span className="muted">({rupees(v.batch.fee)} / month)</span>
+                {v.batch.name} <span className="muted">({rupees(feeFor(v.batch, month))} / month)</span>
               </h3>
               <table>
                 <thead>

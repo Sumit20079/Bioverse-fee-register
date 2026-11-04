@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { backend, exitGuest, isDemo, isGuest, supabase } from './lib/db';
 import { currentMonth, longDateLabel, monthLabel, monthsBetween, todayISO } from './lib/dates';
-import { dueList, monthView } from './lib/calc';
+import { dueList, feeFor, monthView, withFeeChange } from './lib/calc';
 import { download, receiptContact, receiptText, waLink } from './lib/format';
 import Login from './components/Login';
 import Overview from './components/Overview';
@@ -21,6 +21,9 @@ import Trash from './components/Trash';
 import RestoreSheet from './components/RestoreSheet';
 import MoveSheet from './components/MoveSheet';
 import Leaving from './components/Leaving';
+import LockScreen from './components/LockScreen';
+import LockSheet from './components/LockSheet';
+import { clearLock, loadLock } from './lib/lock';
 import AboutSheet from './components/AboutSheet';
 import SettingsSheet from './components/SettingsSheet';
 import { SettingsContext } from './components/SettingsBtn';
@@ -58,6 +61,24 @@ export default function App() {
 }
 
 function Register() {
+  // optional PIN lock (per device): lockCfg is the saved setting, locked is whether the PIN screen is up
+  const [lockCfg, setLockCfg] = useState(loadLock);
+  const [locked, setLocked] = useState(() => !!loadLock());
+  const hiddenAt = useRef(0);
+  useEffect(() => {
+    const onVis = () => {
+      const cfg = loadLock();
+      if (!cfg) return;
+      if (document.hidden) {
+        hiddenAt.current = Date.now();
+        if (cfg.delay === 0) setLocked(true);
+      } else if (hiddenAt.current && Date.now() - hiddenAt.current >= cfg.delay * 60000) {
+        setLocked(true);
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
   const [data, setData] = useState(null);
   const [loadError, setLoadError] = useState('');
   const [tab, setTab] = useState('overview');
@@ -326,7 +347,7 @@ function Register() {
             showPayment(p);
             closePay();
             const others = (byMonth.get(p.month) || []).filter((x) => x.id !== p.id).reduce((t, x) => t + x.amount, 0);
-            const balance = p.settled ? 0 : Math.max(0, batch.fee - others - p.amount);
+            const balance = p.settled ? 0 : Math.max(0, feeFor(batch, p.month) - others - p.amount);
             act(() => backend.savePayment(p)).then((ok) => {
               if (ok) flash('Payment saved', receiptAction(student, batch, p, balance));
             });
@@ -389,7 +410,12 @@ function Register() {
             : 0
         }
         onClose={close}
-        onSave={(b) => closeAfter(act(() => backend.saveBatch(b), b.id ? 'Batch updated' : 'Batch created'))}
+        onSave={(b) => {
+          // a changed fee on an existing batch is recorded from the chosen month, so earlier months keep theirs
+          const old = b.id && data.batches.find((x) => x.id === b.id);
+          const row = old && b.fee !== old.fee ? { ...b, ...withFeeChange(old, b.fee, b.from || currentMonth()) } : { ...b, fee: old ? old.fee : b.fee };
+          return closeAfter(act(() => backend.saveBatch(row), b.id ? 'Batch updated' : 'Batch created'));
+        }}
         onDelete={(id) =>
           closeAfter(act(() => backend.deleteBatch(id))).then((ok) => {
             if (ok && batchId === id) setBatchId(null);
@@ -466,6 +492,8 @@ function Register() {
         onClose={close}
         onAppearance={() => setSheet({ type: 'appearance', from: 'settings' })}
         onAbout={() => setSheet({ type: 'about', from: 'settings' })}
+        lockCfg={lockCfg}
+        onLock={() => setSheet({ type: 'lock', from: 'settings' })}
         onBackup={backup}
         onRestore={() => setSheet({ type: 'restore', from: 'settings' })}
         onTrash={() => setSheet({ type: 'trash', from: 'settings' })}
@@ -476,6 +504,8 @@ function Register() {
         onSignOut={() => supabase.auth.signOut()}
       />
     );
+  } else if (sheet?.type === 'lock') {
+    sheetEl = <LockSheet cfg={lockCfg} onChanged={() => setLockCfg(loadLock())} onClose={closeBack} />;
   } else if (sheet?.type === 'about') {
     sheetEl = <AboutSheet onClose={closeBack} />;
   } else if (sheet?.type === 'appearance') {
@@ -516,6 +546,20 @@ function Register() {
 
   return (
     <div className="app">
+      {locked && lockCfg && (
+        <LockScreen
+          onUnlock={() => {
+            hiddenAt.current = 0;
+            setLocked(false);
+          }}
+          onForgot={() => {
+            clearLock();
+            setLockCfg(null);
+            setLocked(false);
+            if (!isDemo) supabase.auth.signOut();
+          }}
+        />
+      )}
       <div className="screen" key={`${tab}-${batchId || ''}`}>
         <SettingsContext.Provider value={() => setSheet({ type: 'settings' })}>{body}</SettingsContext.Provider>
       </div>

@@ -3,6 +3,7 @@ import { useCountUp } from '../lib/useCountUp';
 import MonthNav from './MonthNav';
 import { Icon } from './Icons';
 import { dateLabel, monthShort } from '../lib/dates';
+import { feeFor } from '../lib/calc';
 import { rupees } from '../lib/format';
 import { useWide } from '../lib/useWide';
 
@@ -39,6 +40,7 @@ function StatusPill({ status, name, onClick }) {
 }
 
 export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditStudent, onEditBatch, onAddStudent, onDeleteMany, onMoveMany }) {
+  const fee = feeFor(v.batch, month);
   const [filter, setFilterRaw] = useState('all');
   const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState(() => new Set());
@@ -73,7 +75,7 @@ export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditS
     status === 'part'
       ? `${rupees(payment.amount)} paid · ${rupees(balance)} left · ${dateLabel(payment.paid_on)}`
       : payment
-        ? `${payment.amount < batch.fee ? `${rupees(payment.amount)} of ${rupees(batch.fee)}` : rupees(payment.amount)} · ${dateLabel(payment.paid_on)}${payment.note ? ` · ${payment.note}` : ''}`
+        ? `${payment.amount < fee ? `${rupees(payment.amount)} of ${rupees(fee)}` : rupees(payment.amount)} · ${dateLabel(payment.paid_on)}${payment.note ? ` · ${payment.note}` : ''}`
         : student.active
           ? 'Not paid yet'
           : 'Left';
@@ -88,7 +90,7 @@ export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditS
           <div>
             <h1 className="sm">{batch.name}</h1>
             <div className="kicker">
-              {rupees(batch.fee)}/mo · {monthShort(month)} {month.slice(0, 4)}
+              {rupees(fee)}/mo · {monthShort(month)} {month.slice(0, 4)}
             </div>
           </div>
         </div>
@@ -188,7 +190,7 @@ export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditS
                   <td className="num">
                     {payment ? rupees(payment.amount) : '–'}
                     {status === 'part' && <div className="muted small">{rupees(balance)} left</div>}
-                    {status === 'paid' && payment.amount < batch.fee && <div className="muted small">of {rupees(batch.fee)}</div>}
+                    {status === 'paid' && payment.amount < fee && <div className="muted small">of {rupees(fee)}</div>}
                   </td>
                   <td>{payment ? dateLabel(payment.paid_on) : '–'}</td>
                   <td className="muted">{payment?.note || ''}</td>

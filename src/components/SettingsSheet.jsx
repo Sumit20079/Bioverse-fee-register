@@ -2,7 +2,7 @@ import { Icon } from './Icons';
 import { useState } from 'react';
 import Sheet from './Sheet';
 
-export default function SettingsSheet({ onClose, onAppearance, onAbout, onBackup, onRestore, onTrash, trashCount, isDemo, isGuest, onExitDemo, onSignOut }) {
+export default function SettingsSheet({ onClose, onAppearance, onLock, lockCfg, onAbout, onBackup, onRestore, onTrash, trashCount, isDemo, isGuest, onExitDemo, onSignOut }) {
   const [armed, setArmed] = useState(false);
   const Row = ({ icon: Ico, title, sub, onClick, danger }) => (
     <button className={'setrow' + (danger ? ' danger' : '')} onClick={onClick}>
@@ -19,6 +19,7 @@ export default function SettingsSheet({ onClose, onAppearance, onAbout, onBackup
       <div className="setgroup">
         <h3>General</h3>
         <Row icon={Icon.Palette} title="Appearance" sub="Colours, dark mode, outlines" onClick={onAppearance} />
+        <Row icon={Icon.Lock} title="App lock" sub={lockCfg ? 'On · asks for a PIN' : 'Off · ask for a PIN when the app opens'} onClick={onLock} />
       </div>
       <div className="setgroup">
         <h3>Your data</h3>

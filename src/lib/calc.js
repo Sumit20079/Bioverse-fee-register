@@ -1,5 +1,22 @@
 import { monthsBetween } from './dates';
 
+// A batch's fee for a given month. `fee_history` lists the changes ({from:'YYYY-MM', fee}, oldest first);
+// the first entry is the original fee and applies to every earlier month. Without history, the batch fee applies always.
+export function feeFor(batch, month) {
+  const h = batch.fee_history;
+  if (!Array.isArray(h) || !h.length) return batch.fee;
+  let fee = h[0].fee;
+  for (const e of h) if (e.from <= month) fee = e.fee;
+  return fee;
+}
+
+// The batch row to save when its fee changes, starting from `from` (earlier months keep their fee).
+export function withFeeChange(batch, fee, from) {
+  const base = Array.isArray(batch.fee_history) && batch.fee_history.length ? batch.fee_history : [{ from: '0000-00', fee: batch.fee }];
+  const kept = base.filter((e) => e.from < from);
+  return { fee, fee_history: [...kept, { from, fee }] };
+}
+
 const sum = (rows) => rows.reduce((t, p) => t + p.amount, 0);
 
 // Where one student's month stands, given that month's payments (there may be several instalments).
@@ -40,7 +57,7 @@ export function monthView(data, month) {
       const list = by.get(`${student.id}|${month}`) || [];
       const enrolled = student.active && student.joined_month <= month;
       if (!enrolled && !list.length) continue;
-      const ms = monthStatus(list, batch.fee);
+      const ms = monthStatus(list, feeFor(batch, month));
       const owes = enrolled && !ms.settled;
       rows.push({
         student,
@@ -97,10 +114,10 @@ export function dueList(data, month) {
     let amount = 0;
     let partial = false;
     for (const m of monthsBetween(student.joined_month, month)) {
-      const ms = monthStatus(by.get(`${student.id}|${m}`) || [], batch.fee);
+      const ms = monthStatus(by.get(`${student.id}|${m}`) || [], feeFor(batch, m));
       if (ms.settled) continue;
       months.push(m);
-      amount += ms.status === 'part' ? ms.balance : batch.fee;
+      amount += ms.status === 'part' ? ms.balance : feeFor(batch, m);
       if (ms.status === 'part') partial = true;
     }
     if (!months.length) continue;

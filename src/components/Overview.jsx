@@ -3,6 +3,7 @@ import MonthNav from './MonthNav';
 import Donut from './Donut';
 import { Icon } from './Icons';
 import { monthLabel } from '../lib/dates';
+import { feeFor } from '../lib/calc';
 import { rupees } from '../lib/format';
 import { useCountUp } from '../lib/useCountUp';
 
@@ -64,7 +65,7 @@ export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, o
                 <div>
                   <div className="name">{v.batch.name}</div>
                   <div className="meta">
-                    {rupees(v.batch.fee)} / month · {v.total} student{v.total === 1 ? '' : 's'}
+                    {rupees(feeFor(v.batch, month))} / month · {v.total} student{v.total === 1 ? '' : 's'}
                   </div>
                 </div>
                 <Icon.Right />

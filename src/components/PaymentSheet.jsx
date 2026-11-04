@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Sheet from './Sheet';
 import { dateLabel, longDateLabel, monthLabel, todayISO } from '../lib/dates';
-import { monthStatus } from '../lib/calc';
+import { feeFor, monthStatus } from '../lib/calc';
 import { receiptContact, receiptText, rupees, waLink } from '../lib/format';
 
 const isPending = (id) => String(id).startsWith('pending-');
@@ -14,7 +14,8 @@ export default function PaymentSheet({ student, batch, month: initialMonth, mont
     () => [...(paymentsByMonth.get(month) || [])].sort((a, b) => (a.paid_on || '').localeCompare(b.paid_on || '')),
     [paymentsByMonth, month],
   );
-  const ms = monthStatus(rows, batch.fee);
+  const fee = feeFor(batch, month);
+  const ms = monthStatus(rows, fee);
 
   const [editId, setEditId] = useState(null); // null = adding a new payment
   const [amount, setAmount] = useState('');
@@ -30,9 +31,9 @@ export default function PaymentSheet({ student, batch, month: initialMonth, mont
       setAmount(String(r.amount));
       setPaidOn(r.paid_on);
       setNote(r.note || '');
-      setWaive(r.settled !== false && ms.received < batch.fee);
+      setWaive(r.settled !== false && ms.received < fee);
     } else {
-      const left = rows.length ? ms.balance : batch.fee;
+      const left = rows.length ? ms.balance : fee;
       setAmount(left > 0 ? String(left) : '');
       setPaidOn(todayISO());
       setNote('');
@@ -47,12 +48,12 @@ export default function PaymentSheet({ student, batch, month: initialMonth, mont
     const last = rows[rows.length - 1];
     load(last && ms.settled && !isPending(last.id) ? last.id : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [month, rowsKey, batch.fee]);
+  }, [month, rowsKey, fee]);
 
   const value = Number(amount);
   const valid = amount !== '' && Number.isFinite(value) && value >= 0 && paidOn;
   const others = rows.filter((r) => r.id !== editId).reduce((t, r) => t + r.amount, 0);
-  const leftBefore = Math.max(0, batch.fee - others);
+  const leftBefore = Math.max(0, fee - others);
   const leftAfter = Math.max(0, leftBefore - (valid ? Math.round(value) : 0));
   const editingRow = editId ? rows.find((r) => r.id === editId) : null;
 
@@ -66,7 +67,7 @@ export default function PaymentSheet({ student, batch, month: initialMonth, mont
       amount: amt,
       paid_on: paidOn,
       note: note.trim(),
-      settled: others + amt >= batch.fee || waive,
+      settled: others + amt >= fee || waive,
     });
     if (!ok) setBusy(false);
   }
@@ -94,12 +95,12 @@ export default function PaymentSheet({ student, batch, month: initialMonth, mont
     : null;
 
   const monthTag = (m) => {
-    const s = monthStatus(paymentsByMonth.get(m) || [], batch.fee).status;
+    const s = monthStatus(paymentsByMonth.get(m) || [], feeFor(batch, m)).status;
     return s === 'paid' ? ' (paid)' : s === 'part' ? ' (part paid)' : '';
   };
 
   return (
-    <Sheet title={student.name} subtitle={`${batch.name} · ${rupees(batch.fee)} / month`} onClose={onClose}>
+    <Sheet title={student.name} subtitle={`${batch.name} · ${rupees(fee)} / month`} onClose={onClose}>
       <div className="field">
         <label htmlFor="pay-month">Month</label>
         <select id="pay-month" value={month} onChange={(e) => setMonth(e.target.value)}>
@@ -116,7 +117,7 @@ export default function PaymentSheet({ student, batch, month: initialMonth, mont
         <div className="instal">
           <div className="instal-sum">
             <span>
-              {rupees(ms.received)} of {rupees(batch.fee)} received
+              {rupees(ms.received)} of {rupees(fee)} received
             </span>
             <b className={ms.balance > 0 ? 'left' : 'ok'}>{ms.balance > 0 ? `${rupees(ms.balance)} left` : 'Settled'}</b>
           </div>

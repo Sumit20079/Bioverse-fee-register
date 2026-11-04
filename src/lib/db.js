@@ -138,7 +138,7 @@ const remote = {
     return { batches, students, payments };
   },
   async saveBatch(b) {
-    const row = { name: b.name, fee: b.fee };
+    const row = { name: b.name, fee: b.fee, ...(b.fee_history ? { fee_history: b.fee_history } : {}) };
     check(b.id ? await supabase.from('batches').update(row).eq('id', b.id) : await supabase.from('batches').insert(row));
   },
   async saveStudent(s) {
@@ -312,7 +312,7 @@ const demo = {
   },
   async saveBatch(b) {
     const d = readDemo();
-    if (b.id) d.batches = d.batches.map((x) => (x.id === b.id ? { ...x, name: b.name, fee: b.fee } : x));
+    if (b.id) d.batches = d.batches.map((x) => (x.id === b.id ? { ...x, name: b.name, fee: b.fee, ...(b.fee_history ? { fee_history: b.fee_history } : {}) } : x));
     else d.batches.push({ id: uid(), name: b.name, fee: b.fee });
     writeDemo(d);
   },
