@@ -33,5 +33,6 @@ export const Icon = {
   Upload: make(<path d="M12 16V6m0 0l-4 4m4-4l4 4M5 20h14" />),
   Pencil: make(<path d="M4 20l4-1 11-11-3-3L5 16l-1 4z" />),
   Search: make(<><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></>),
+  Palette: make(<><path d="M12 3a9 9 0 1 0 0 18c1.2 0 2-.8 2-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z" /><circle cx="7.5" cy="11" r="1" /><circle cx="10" cy="7" r="1" /><circle cx="15" cy="7" r="1" /></>),
   Out: make(<path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10" />),
 };

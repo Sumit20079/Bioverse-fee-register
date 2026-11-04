@@ -21,6 +21,8 @@ import Trash from './components/Trash';
 import RestoreSheet from './components/RestoreSheet';
 import MoveSheet from './components/MoveSheet';
 import Leaving from './components/Leaving';
+import AppearanceSheet from './components/AppearanceSheet';
+import { loadLook, applyLook, saveLook } from './lib/look';
 import { Icon } from './components/Icons';
 
 // The newest deleted_at among everything in Recently deleted.
@@ -59,6 +61,12 @@ function Register() {
   const [batchId, setBatchId] = useState(null);
   const [month, setMonth] = useState(currentMonth());
   const [sheet, setSheet] = useState(null);
+  const [look, setLook] = useState(loadLook);
+  const changeLook = (l) => {
+    setLook(l);
+    applyLook(l);
+    saveLook(l);
+  };
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
 
@@ -267,6 +275,7 @@ function Register() {
           onBackup={backup}
           onRestoreFile={() => setSheet({ type: 'restore' })}
           onTrash={() => setSheet({ type: 'trash' })}
+          onAppearance={() => setSheet({ type: 'appearance' })}
           trashCount={data.trash.batches.length + data.trash.students.length}
           onSignOut={() => supabase.auth.signOut()}
         />
@@ -443,6 +452,8 @@ function Register() {
         }
       />
     );
+  } else if (sheet?.type === 'appearance') {
+    sheetEl = <AppearanceSheet look={look} onChange={changeLook} onClose={close} />;
   } else if (sheet?.type === 'trash') {
     sheetEl = (
       <Trash

@@ -5,7 +5,7 @@ import { monthLabel } from '../lib/dates';
 import { rupees } from '../lib/format';
 import { useCountUp } from '../lib/useCountUp';
 
-export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, onNewBatch, onImport, onReport, onBackup, onRestoreFile, onTrash, trashCount, onSignOut }) {
+export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, onNewBatch, onImport, onReport, onBackup, onRestoreFile, onTrash, onAppearance, trashCount, onSignOut }) {
   const shownCollected = useCountUp(view.collected);
 
   return (
@@ -97,6 +97,9 @@ export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, o
         </button>
         <button className="tool" onClick={onTrash}>
           <Icon.Trash /> Recently deleted{trashCount > 0 ? ` (${trashCount})` : ''}
+        </button>
+        <button className="tool" onClick={onAppearance}>
+          <Icon.Palette /> Appearance
         </button>
         {!isDemo && (
           <button className="tool" onClick={onSignOut}>
