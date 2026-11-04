@@ -17,7 +17,7 @@ export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, o
           <h1>{monthLabel(month)}</h1>
         </div>
         <div className="navpair">
-          <MonthNav month={month} onChange={setMonth} />
+          <MonthNav month={month} onChange={setMonth} animate />
           <SettingsBtn />
         </div>
       </header>
