@@ -24,7 +24,7 @@ export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, o
 
       {isDemo && (
         <p className="banner" role="note" style={{ marginTop: 8 }}>
-          Demo mode: sample data, saved only in this browser.
+          Demo mode: sample students, saved only on this device.
         </p>
       )}
 

@@ -557,3 +557,6 @@ input.bright::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; 
 .setgroup:nth-child(2) { animation-delay: 0.12s; }
 .setgroup:nth-child(3) { animation-delay: 0.19s; }
 .setgroup:nth-child(4) { animation-delay: 0.26s; }
+
+.or { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 13px; }
+.or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }

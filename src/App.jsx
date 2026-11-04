@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { backend, isDemo, supabase } from './lib/db';
+import { backend, exitGuest, isDemo, isGuest, supabase } from './lib/db';
 import { currentMonth, longDateLabel, monthLabel, monthsBetween, todayISO } from './lib/dates';
 import { dueList, monthView } from './lib/calc';
 import { download, receiptContact, receiptText, waLink } from './lib/format';
@@ -469,6 +469,8 @@ function Register() {
         onTrash={() => setSheet({ type: 'trash', from: 'settings' })}
         trashCount={data.trash.batches.length + data.trash.students.length}
         isDemo={isDemo}
+        isGuest={isGuest}
+        onExitDemo={exitGuest}
         onSignOut={() => supabase.auth.signOut()}
       />
     );

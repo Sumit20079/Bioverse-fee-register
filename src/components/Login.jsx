@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '../lib/db';
+import { enterGuest, supabase } from '../lib/db';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -33,6 +33,9 @@ export default function Login() {
         </div>
         {error && <p className="err" role="alert">{error}</p>}
         <button className="btn" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
+        <div className="or"><span>or just looking around?</span></div>
+        <button type="button" className="btn secondary" onClick={enterGuest}>Try the demo</button>
+        <p className="hint" style={{ textAlign: 'center' }}>Sample students, kept only on this device. Nothing touches a real register.</p>
       </form>
     </div>
   );

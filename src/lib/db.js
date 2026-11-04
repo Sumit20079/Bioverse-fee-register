@@ -5,8 +5,35 @@ const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const supabase = url && key ? createClient(url, key) : null;
-// With no Supabase keys the app runs on sample data kept in this browser only.
-export const isDemo = !supabase;
+// With no Supabase keys, or when someone chose "Try the demo", the app runs on sample data kept in this browser only.
+const GUEST_KEY = 'fee-register-guest';
+const readGuest = () => {
+  try {
+    return localStorage.getItem(GUEST_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+export const isGuest = !!supabase && readGuest();
+export const isDemo = !supabase || isGuest;
+
+export function enterGuest() {
+  try {
+    localStorage.setItem(GUEST_KEY, '1');
+  } catch {
+    /* blocked storage: the demo just won't survive a reload */
+  }
+  location.reload();
+}
+export function exitGuest() {
+  try {
+    localStorage.removeItem(GUEST_KEY);
+    localStorage.removeItem('fee-register-demo-v1');
+  } catch {
+    /* nothing to clean */
+  }
+  location.reload();
+}
 
 const asMonth = (d) => String(d).slice(0, 7);
 const asDate = (m) => `${m}-01`;
