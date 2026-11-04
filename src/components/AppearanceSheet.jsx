@@ -1,7 +1,7 @@
 import { ACCENTS } from '../lib/accents';
 import { seedOf } from '../lib/look';
 import { Icon } from './Icons';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Sheet from './Sheet';
 import ColorWheel from './ColorWheel';
 
@@ -34,6 +34,13 @@ function Seg({ label, items, value, onPick }) {
 export default function AppearanceSheet({ look, onChange, onClose }) {
   const mono = look.style === 'mono';
   const [picking, setPicking] = useState(look.accent === 'custom');
+  const panel = useRef(null);
+  // when the wheel opens, bring it fully into view once the panel has grown
+  useEffect(() => {
+    if (!picking) return undefined;
+    const t = setTimeout(() => panel.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 280);
+    return () => clearTimeout(t);
+  }, [picking]);
   return (
     <Sheet title="Appearance" subtitle="Saved on this device only" onClose={onClose}>
       <Seg label="Theme mode" items={MODES} value={look.mode} onPick={(mode) => onChange({ ...look, mode })} />
@@ -74,7 +81,11 @@ export default function AppearanceSheet({ look, onChange, onClose }) {
             {look.accent === 'custom' ? <Tick /> : <Icon.Pipette />}
           </button>
         </div>
-        {picking && <ColorWheel value={look.custom} onChange={(custom) => onChange({ ...look, accent: 'custom', custom })} />}
+        <div ref={panel} className={'collapse' + (picking ? ' open' : '')} aria-hidden={!picking}>
+          <div className="collapse-in">
+            <ColorWheel value={look.custom} onChange={(custom) => onChange({ ...look, accent: 'custom', custom })} />
+          </div>
+        </div>
       </div>
 
       <label className="switchrow">
