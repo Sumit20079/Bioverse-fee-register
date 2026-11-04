@@ -3,7 +3,7 @@ import { Icon } from './Icons';
 
 export const SettingsContext = createContext(() => {});
 
-// The gear turns half a revolution clockwise, and the panel starts rising just after it begins to turn.
+// The gear makes one full clockwise turn, and the panel starts rising just after it begins to turn.
 export default function SettingsBtn() {
   const open = useContext(SettingsContext);
   const [turns, setTurns] = useState(0);
@@ -19,7 +19,7 @@ export default function SettingsBtn() {
 
   return (
     <button className="iconbtn gearbtn" aria-label="Settings" onClick={click}>
-      <span className="gear" style={{ transform: `rotate(${turns * 180}deg)` }}>
+      <span className="gear" style={{ transform: `rotate(${turns * 360}deg)` }}>
         <Icon.Gear />
       </span>
     </button>
