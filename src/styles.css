@@ -560,3 +560,17 @@ input.bright::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; 
 
 .or { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 13px; }
 .or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
+/* about */
+.aboutcard { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 24px; background: var(--primary-tint); color: var(--primary-ink); }
+.aboutcard img { border-radius: 16px; flex: none; }
+.aboutcard b { display: block; font-size: 20px; letter-spacing: -0.3px; }
+.aboutcard small { display: block; font-size: 13px; opacity: 0.8; margin-top: 2px; }
+.tips { display: flex; flex-direction: column; gap: 4px; }
+.tips details { background: var(--card); border-radius: 20px; padding: 0 16px; }
+.tips summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; font-size: 15px; font-weight: 600; }
+.tips summary::-webkit-details-marker { display: none; }
+.tips summary::after { content: ''; width: 9px; height: 9px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg) translateY(-2px); transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); flex: none; }
+.tips details[open] summary::after { transform: rotate(225deg) translateY(-2px); }
+.tips p { margin: 0 0 14px; font-size: 14px; line-height: 1.5; color: var(--muted); animation: fade 0.3s ease; }
+.credit { text-align: center; font-size: 13px; color: var(--muted); margin: 4px 0 0; }

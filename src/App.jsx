@@ -21,6 +21,7 @@ import Trash from './components/Trash';
 import RestoreSheet from './components/RestoreSheet';
 import MoveSheet from './components/MoveSheet';
 import Leaving from './components/Leaving';
+import AboutSheet from './components/AboutSheet';
 import SettingsSheet from './components/SettingsSheet';
 import { SettingsContext } from './components/SettingsBtn';
 import AppearanceSheet from './components/AppearanceSheet';
@@ -464,6 +465,7 @@ function Register() {
       <SettingsSheet
         onClose={close}
         onAppearance={() => setSheet({ type: 'appearance', from: 'settings' })}
+        onAbout={() => setSheet({ type: 'about', from: 'settings' })}
         onBackup={backup}
         onRestore={() => setSheet({ type: 'restore', from: 'settings' })}
         onTrash={() => setSheet({ type: 'trash', from: 'settings' })}
@@ -474,6 +476,8 @@ function Register() {
         onSignOut={() => supabase.auth.signOut()}
       />
     );
+  } else if (sheet?.type === 'about') {
+    sheetEl = <AboutSheet onClose={closeBack} />;
   } else if (sheet?.type === 'appearance') {
     sheetEl = <AppearanceSheet look={look} onChange={changeLook} onClose={closeBack} />;
   } else if (sheet?.type === 'trash') {
