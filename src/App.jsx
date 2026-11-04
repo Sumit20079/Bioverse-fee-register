@@ -22,7 +22,7 @@ import RestoreSheet from './components/RestoreSheet';
 import MoveSheet from './components/MoveSheet';
 import Leaving from './components/Leaving';
 import AppearanceSheet from './components/AppearanceSheet';
-import { loadLook, applyLook, saveLook } from './lib/look';
+import { loadLook, applyLook, saveLook, watchSystem } from './lib/look';
 import { Icon } from './components/Icons';
 
 // The newest deleted_at among everything in Recently deleted.
@@ -62,6 +62,9 @@ function Register() {
   const [month, setMonth] = useState(currentMonth());
   const [sheet, setSheet] = useState(null);
   const [look, setLook] = useState(loadLook);
+  const lookRef = useRef(look);
+  lookRef.current = look;
+  useEffect(() => watchSystem(() => lookRef.current), []);
   const changeLook = (l) => {
     setLook(l);
     applyLook(l);
