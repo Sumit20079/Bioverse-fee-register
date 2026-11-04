@@ -500,3 +500,18 @@ html.outlines .iconbtn { border: 1px solid var(--field); }
 .btn.danger { background: transparent; border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
 .sbtn.danger { border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
 .sbtn.danger.armed { color: var(--on-inv); }
+
+/* colour wheel */
+.wheelbox { position: relative; display: flex; flex-direction: column; gap: 14px; margin-top: 6px; padding: 16px; border-radius: 20px; background: var(--card); }
+.wheelwrap { position: relative; align-self: center; width: min(240px, 100%); aspect-ratio: 1; }
+.wheel { width: 100%; height: 100%; border-radius: 50%; touch-action: none; cursor: crosshair;
+  background: radial-gradient(circle closest-side, #fff, rgba(255, 255, 255, 0)), conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15); }
+.wheel-thumb { position: absolute; width: 22px; height: 22px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.35); transform: translate(-50%, -50%); pointer-events: none; }
+.wheelbox { --wx: 0; }
+input.bright { -webkit-appearance: none; appearance: none; width: 100%; height: 14px; border-radius: 7px; border: 0; padding: 0; min-height: 0; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2); }
+input.bright::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: #fff; border: 2px solid rgba(0, 0, 0, 0.45); }
+input.bright::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 2px solid rgba(0, 0, 0, 0.45); }
+.hexrow { display: flex; align-items: center; gap: 10px; border: 1px solid var(--field); border-radius: 12px; padding: 0 12px; min-height: 48px; }
+.hexrow i { width: 24px; height: 24px; border-radius: 8px; flex: none; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2); }
+.hexrow input { border: 0 !important; padding: 0 !important; min-height: 44px !important; flex: 1; font-size: 16px; font-weight: 600; letter-spacing: 1px; font-family: ui-monospace, monospace; background: transparent !important; outline: 0; }
+.hexrow:focus-within { border-color: var(--primary); }

@@ -1,7 +1,9 @@
 import { ACCENTS } from '../lib/accents';
 import { seedOf } from '../lib/look';
 import { Icon } from './Icons';
+import { useState } from 'react';
 import Sheet from './Sheet';
+import ColorWheel from './ColorWheel';
 
 const MODES = [
   ['system', 'System', Icon.Phone],
@@ -31,6 +33,7 @@ function Seg({ label, items, value, onPick }) {
 
 export default function AppearanceSheet({ look, onChange, onClose }) {
   const mono = look.style === 'mono';
+  const [picking, setPicking] = useState(look.accent === 'custom');
   return (
     <Sheet title="Appearance" subtitle="Saved on this device only" onClose={onClose}>
       <Seg label="Theme mode" items={MODES} value={look.mode} onPick={(mode) => onChange({ ...look, mode })} />
@@ -54,17 +57,24 @@ export default function AppearanceSheet({ look, onChange, onClose }) {
               {look.accent === a.id && <Tick />}
             </button>
           ))}
-          <label className={'swatch pick' + (look.accent === 'custom' ? ' on' : '')} style={{ '--sw': look.custom }} title="Pick any colour">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={look.accent === 'custom'}
+            aria-expanded={picking}
+            aria-label="Pick any colour"
+            title="Pick any colour"
+            className={'swatch pick' + (look.accent === 'custom' ? ' on' : '')}
+            style={{ '--sw': look.custom }}
+            onClick={() => {
+              setPicking((v) => !v);
+              if (look.accent !== 'custom') onChange({ ...look, accent: 'custom' });
+            }}
+          >
             {look.accent === 'custom' ? <Tick /> : <Icon.Pipette />}
-            <input
-              type="color"
-              aria-label="Pick a custom colour"
-              value={look.custom}
-              onChange={(e) => onChange({ ...look, accent: 'custom', custom: e.target.value })}
-            />
-          </label>
+          </button>
         </div>
-        {look.accent === 'custom' && <span className="hint">Custom colour {seedOf(look).toUpperCase()}</span>}
+        {picking && <ColorWheel value={look.custom} onChange={(custom) => onChange({ ...look, accent: 'custom', custom })} />}
       </div>
 
       <label className="switchrow">
