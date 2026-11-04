@@ -32,7 +32,13 @@ export default function AboutSheet({ onClose }) {
         </div>
       </div>
 
-      <p className="credit">Made by @spidermanbonaparte and Claude</p>
+      <p className="credit">
+        Made by{' '}
+        <a href="https://github.com/Sumit20079" target="_blank" rel="noopener noreferrer">
+          @Sumit20079
+        </a>{' '}
+        and Claude
+      </p>
     </Sheet>
   );
 }
