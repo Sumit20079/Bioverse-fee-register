@@ -22,6 +22,15 @@ export function useSwipeTabs({ area, pageRef, enabled, index, count, onGo }) {
     const calm = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
     let s = null;
     let timer = 0;
+    let raf = 0;
+    let shown = 0;
+    const paint = () => {
+      raf = 0;
+      const page = pageRef.current;
+      if (!page) return;
+      page.style.transform = `translate3d(${shown}px, 0, 0)`;
+      page.style.opacity = String(1 - Math.min(0.35, (Math.abs(shown) / (page.clientWidth || 400)) * 0.5));
+    };
 
     const reset = (animate) => {
       const page = pageRef.current;
@@ -29,6 +38,7 @@ export function useSwipeTabs({ area, pageRef, enabled, index, count, onGo }) {
       page.style.transition = animate ? `transform 0.32s ${EASE}, opacity 0.32s ease` : 'none';
       page.style.transform = '';
       page.style.opacity = '';
+      page.style.willChange = '';
       clearTimeout(timer);
       timer = setTimeout(() => page.style && (page.style.transition = ''), 340);
     };
@@ -51,6 +61,7 @@ export function useSwipeTabs({ area, pageRef, enabled, index, count, onGo }) {
           s.mode = 'drag';
           area.setPointerCapture?.(e.pointerId);
           page.style.transition = 'none';
+          page.style.willChange = 'transform, opacity';
         } else {
           s = null;
           return;
@@ -58,13 +69,14 @@ export function useSwipeTabs({ area, pageRef, enabled, index, count, onGo }) {
       }
       s.dx = dx;
       const atEnd = (dx > 0 && index === 0) || (dx < 0 && index === count - 1);
-      const shown = atEnd ? dx * 0.25 : dx;
-      page.style.transform = `translateX(${shown}px)`;
-      page.style.opacity = String(1 - Math.min(0.5, (Math.abs(shown) / (page.clientWidth || 400)) * 0.6));
+      shown = atEnd ? dx * 0.25 : dx;
+      if (!raf) raf = requestAnimationFrame(paint);
     };
 
     const up = (e) => {
       if (!s || e.pointerId !== s.id) return;
+      cancelAnimationFrame(raf);
+      raf = 0;
       const was = s;
       s = null;
       if (was.mode !== 'drag') return;
@@ -80,7 +92,7 @@ export function useSwipeTabs({ area, pageRef, enabled, index, count, onGo }) {
         return onGo(target, dir);
       }
       page.style.transition = `transform 0.18s cubic-bezier(0.4, 0, 1, 1), opacity 0.18s ease`;
-      page.style.transform = `translateX(${dir * -1 * (page.clientWidth || 400)}px)`;
+      page.style.transform = `translate3d(${dir * -1 * (page.clientWidth || 400)}px, 0, 0)`;
       page.style.opacity = '0';
       timer = setTimeout(() => onGo(target, dir), 170);
     };
@@ -102,6 +114,7 @@ export function useSwipeTabs({ area, pageRef, enabled, index, count, onGo }) {
       area.removeEventListener('pointerup', up);
       area.removeEventListener('pointercancel', cancel);
       clearTimeout(timer);
+      cancelAnimationFrame(raf);
       reset(false);
     };
   }, [area, pageRef, enabled, index, count, onGo]);

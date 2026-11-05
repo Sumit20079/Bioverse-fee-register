@@ -625,6 +625,7 @@ input.bright::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; 
 /* swipe between tabs */
 .app { overflow-x: clip; }
 .app.swipeable, .app.swipeable .screen { touch-action: pan-y; }
+.app.swipeable .screen { backface-visibility: hidden; }
 .screen.from-right { animation: slideInR 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
 .screen.from-left { animation: slideInL 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
 @keyframes slideInR { from { transform: translateX(48px); opacity: 0; } }
