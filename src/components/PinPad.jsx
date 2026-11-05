@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icons';
 
 // Four dots and a number pad. `check(pin)` resolves to an error message, or null when the PIN was accepted.
-export default function PinPad({ title, hint, hintBad = false, check }) {
+export default function PinPad({ title, hint, hintBad = false, success = false, check }) {
   const [digits, setDigits] = useState('');
   const [error, setError] = useState('');
   const [shake, setShake] = useState(0);
+  const [wrong, setWrong] = useState(false);
   const busy = useRef(false);
 
   const press = (d) => {
@@ -20,13 +21,21 @@ export default function PinPad({ title, hint, hintBad = false, check }) {
     if (digits.length !== 4 || busy.current) return;
     busy.current = true;
     Promise.resolve(check(digits)).then((msg) => {
-      busy.current = false;
-      if (msg) {
-        setError(msg);
-        setShake((n) => n + 1);
-        navigator.vibrate?.([30, 40, 30]);
+      if (!msg) {
+        busy.current = false;
+        setDigits('');
+        return;
       }
-      setDigits('');
+      // wrong: the four dots turn red and shake, then clear (input stays blocked meanwhile)
+      setError(msg);
+      setWrong(true);
+      setShake((n) => n + 1);
+      navigator.vibrate?.([30, 40, 30]);
+      setTimeout(() => {
+        busy.current = false;
+        setWrong(false);
+        setDigits('');
+      }, 380);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [digits]);
@@ -44,9 +53,9 @@ export default function PinPad({ title, hint, hintBad = false, check }) {
     <div className="pin">
       <h2>{title}</h2>
       <p className={'pin-msg' + (error || hintBad ? ' bad' : '')} role="status">{error || hint || ' '}</p>
-      <div key={shake} className={'pin-dots' + (shake ? ' shake' : '')} aria-label={`${digits.length} of 4 digits entered`}>
+      <div key={shake} className={'pin-dots' + (wrong ? ' shake bad' : '') + (success ? ' ok' : '')} aria-label={`${digits.length} of 4 digits entered`}>
         {[0, 1, 2, 3].map((i) => (
-          <i key={i} className={i < digits.length ? 'on' : ''} />
+          <i key={i} className={success || wrong || i < digits.length ? 'on' : ''} style={{ '--i': i }} />
         ))}
       </div>
       <div className="pin-keys">

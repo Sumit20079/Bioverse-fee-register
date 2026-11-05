@@ -588,10 +588,29 @@ input.bright::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; 
 @keyframes pinshake { 10%, 90% { transform: translateX(-2px); } 20%, 80% { transform: translateX(4px); } 30%, 50%, 70% { transform: translateX(-8px); } 40%, 60% { transform: translateX(8px); } }
 .pin-keys { display: grid; grid-template-columns: repeat(3, 72px); gap: 14px 22px; justify-content: center; }
 .pin-keys button { width: 72px; height: 72px; border-radius: 50%; border: 0; background: var(--card); color: var(--ink); font-size: 26px; font-weight: 500; display: grid; place-items: center; }
-.pin-keys button:active { background: var(--primary-tint); }
+.pin-keys button { transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1.3), background-color 0.4s ease; }
+.pin-keys button:active { background: var(--primary-tint); transform: scale(0.9); transition-duration: 0.06s, 0s; }
 .pin-keys .del { background: transparent; color: var(--muted); }
 .pin-keys .del svg { width: 26px; height: 26px; }
 .forgot { margin-top: 10px; background: none; border: 0; padding: 12px; color: var(--primary); font-weight: 600; font-size: 14px; }
 .sheet .pin { padding: 8px 0 4px; }
 .credit a { color: var(--primary); font-weight: 600; text-decoration: none; }
 .credit a:hover { text-decoration: underline; }
+
+/* pin animations */
+@keyframes keyin { from { opacity: 0; transform: translateY(14px) scale(0.85); } to { opacity: 1; transform: none; } }
+@keyframes pinfade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.lockscreen .pin h2, .lockscreen .pin-msg, .lockscreen .pin-dots { animation: pinfade 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+.lockscreen .pin-msg { animation-delay: 0.04s; }
+.lockscreen .pin-dots { animation-delay: 0.08s; }
+.lockscreen .pin-keys > * { animation: keyin 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+.lockscreen .pin-keys > :nth-child(1) { animation-delay: 0.10s; } .lockscreen .pin-keys > :nth-child(2) { animation-delay: 0.125s; } .lockscreen .pin-keys > :nth-child(3) { animation-delay: 0.15s; }
+.lockscreen .pin-keys > :nth-child(4) { animation-delay: 0.175s; } .lockscreen .pin-keys > :nth-child(5) { animation-delay: 0.20s; } .lockscreen .pin-keys > :nth-child(6) { animation-delay: 0.225s; }
+.lockscreen .pin-keys > :nth-child(7) { animation-delay: 0.25s; } .lockscreen .pin-keys > :nth-child(8) { animation-delay: 0.275s; } .lockscreen .pin-keys > :nth-child(9) { animation-delay: 0.30s; }
+.lockscreen .pin-keys > :nth-child(11) { animation-delay: 0.325s; } .lockscreen .pin-keys > :nth-child(12) { animation-delay: 0.35s; }
+.lockscreen .forgot { animation: pinfade 0.35s ease 0.4s backwards; }
+.pin-dots.bad i { background: var(--danger); border-color: var(--danger); }
+@keyframes pinwave { 0%, 100% { transform: translateY(0) scale(1.15); } 40% { transform: translateY(-9px) scale(1.3); } }
+.pin-dots.ok i { animation: pinwave 0.34s cubic-bezier(0.3, 0, 0.3, 1); animation-delay: calc(var(--i) * 45ms); }
+@keyframes lockaway { to { opacity: 0; transform: scale(1.05); } }
+.lockscreen.leaving { animation: lockaway 0.24s cubic-bezier(0.4, 0, 1, 1) forwards; pointer-events: none; }
