@@ -24,6 +24,7 @@ import Leaving from './components/Leaving';
 import LockScreen from './components/LockScreen';
 import LockSheet from './components/LockSheet';
 import { clearLock, loadLock } from './lib/lock';
+import { useSwipeTabs } from './lib/useSwipeTabs';
 import AboutSheet from './components/AboutSheet';
 import SettingsSheet from './components/SettingsSheet';
 import { SettingsContext } from './components/SettingsBtn';
@@ -43,6 +44,8 @@ const buzz = () => {
     /* not supported */
   }
 };
+
+const TAB_ORDER = ['overview', 'batches', 'search', 'collected', 'due'];
 
 export default function App() {
   // undefined = still checking the saved login
@@ -89,6 +92,19 @@ function Register() {
   const lookRef = useRef(look);
   lookRef.current = look;
   useEffect(() => watchSystem(() => lookRef.current), []);
+  // swipe between the five main tabs on a phone
+  const [appEl, setAppEl] = useState(null);
+  const pageRef = useRef(null);
+  const [swipeDir, setSwipeDir] = useState(null);
+  const tabIndex = TAB_ORDER.indexOf(tab);
+  const onPhone = typeof matchMedia === 'function' && !matchMedia('(min-width: 900px)').matches;
+  const goSwipe = useCallback((next, dir) => {
+    buzz();
+    setSwipeDir(dir > 0 ? 'right' : 'left');
+    setTab(TAB_ORDER[next]);
+    setBatchId(null);
+  }, []);
+  useSwipeTabs({ area: appEl, pageRef, enabled: onPhone && tabIndex >= 0 && !batchId && !sheet && !locked, index: tabIndex, count: TAB_ORDER.length, onGo: goSwipe });
   const changeLook = (l) => {
     setLook(l);
     applyLook(l);
@@ -212,6 +228,7 @@ function Register() {
   });
 
   const goTab = (t) => {
+    setSwipeDir(null);
     setTab(t);
     setBatchId(null);
   };
@@ -252,6 +269,7 @@ function Register() {
   };
 
   let body;
+  let fabEl = null;
   if (tab === 'search') {
     body = (
       <Search
@@ -308,15 +326,16 @@ function Register() {
           trashCount={data.trash.batches.length + data.trash.students.length}
           onSignOut={() => supabase.auth.signOut()}
         />
-        {view.batches.length > 0 && (
-          <div className="fabwrap">
-            <button className="fab" aria-label="Add student" onClick={() => addStudent()}>
-              <Icon.Plus width={24} height={24} strokeWidth={2} />
-            </button>
-          </div>
-        )}
       </>
     );
+    if (view.batches.length > 0)
+      fabEl = (
+        <div className="fabwrap">
+          <button className="fab" aria-label="Add student" onClick={() => addStudent()}>
+            <Icon.Plus width={24} height={24} strokeWidth={2} />
+          </button>
+        </div>
+      );
   }
 
   // Sheets
@@ -545,7 +564,7 @@ function Register() {
   }
 
   return (
-    <div className="app">
+    <div className={'app' + (onPhone && tabIndex >= 0 && !batchId ? ' swipeable' : '')} ref={setAppEl}>
       {locked && lockCfg && (
         <LockScreen
           onUnlock={() => {
@@ -560,9 +579,10 @@ function Register() {
           }}
         />
       )}
-      <div className="screen" key={`${tab}-${batchId || ''}`}>
+      <div className={'screen' + (swipeDir ? ` from-${swipeDir}` : '')} key={`${tab}-${batchId || ''}`} ref={pageRef}>
         <SettingsContext.Provider value={() => setSheet({ type: 'settings' })}>{body}</SettingsContext.Provider>
       </div>
+      {fabEl}
 
       <nav className="nav" aria-label="Main">
         <span className="nav-ind" style={{ '--i': tab === 'search' ? 2 : tab === 'collected' ? 3 : tab === 'due' ? 4 : tab === 'batches' || batchId ? 1 : 0 }} aria-hidden="true" />

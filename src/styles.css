@@ -621,3 +621,12 @@ input.bright::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; 
 .customtime input { width: 72px; min-height: 44px; border: 0; background: var(--card); border-radius: 12px; text-align: center; font-size: 20px; font-weight: 700; color: var(--ink); outline: 0; }
 .customtime input:focus { box-shadow: 0 0 0 2px var(--primary); }
 .customtime span { color: var(--muted); font-size: 14px; }
+
+/* swipe between tabs */
+.app { overflow-x: clip; }
+.app.swipeable, .app.swipeable .screen { touch-action: pan-y; }
+.screen.from-right { animation: slideInR 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+.screen.from-left { animation: slideInL 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+@keyframes slideInR { from { transform: translateX(48px); opacity: 0; } }
+@keyframes slideInL { from { transform: translateX(-48px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .screen.from-right, .screen.from-left { animation: none; } }
