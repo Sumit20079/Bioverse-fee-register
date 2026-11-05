@@ -614,3 +614,10 @@ input.bright::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; 
 .pin-dots.ok i { animation: pinwave 0.34s cubic-bezier(0.3, 0, 0.3, 1); animation-delay: calc(var(--i) * 45ms); }
 @keyframes lockaway { to { opacity: 0; transform: scale(1.05); } }
 .lockscreen.leaving { animation: lockaway 0.24s cubic-bezier(0.4, 0, 1, 1) forwards; pointer-events: none; }
+
+.seg[aria-label="Lock again"] button { height: 52px; border-radius: 22px; font-size: 13px; padding: 0 4px; }
+.customtime { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 8px 14px; border: 1px solid var(--field); border-radius: 16px; }
+.customtime label { font-size: 14px; font-weight: 600; color: var(--muted); }
+.customtime input { width: 72px; min-height: 44px; border: 0; background: var(--card); border-radius: 12px; text-align: center; font-size: 20px; font-weight: 700; color: var(--ink); outline: 0; }
+.customtime input:focus { box-shadow: 0 0 0 2px var(--primary); }
+.customtime span { color: var(--muted); font-size: 14px; }

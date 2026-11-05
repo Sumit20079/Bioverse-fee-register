@@ -1,13 +1,26 @@
 import { useState } from 'react';
 import Sheet from './Sheet';
 import PinPad from './PinPad';
-import { DELAYS, clearLock, delayLabel, setDelay, setPin, verifyPin } from '../lib/lock';
+import { DELAYS, MAX_DELAY, clearLock, delayLabel, prettyMinutes, setDelay, setPin, verifyPin } from '../lib/lock';
 
 export default function LockSheet({ cfg, onChanged, onClose }) {
   const [step, setStep] = useState('menu'); // menu | new | confirm | verify-change | verify-off
   const [first, setFirst] = useState('');
   const [notice, setNotice] = useState('');
   const toMenu = () => setStep('menu');
+  const isPreset = (d) => DELAYS.some(([v]) => v === d);
+  const [customOpen, setCustomOpen] = useState(() => !!cfg && !isPreset(cfg.delay));
+  const [text, setText] = useState(() => String(cfg && !isPreset(cfg.delay) ? cfg.delay : 10));
+  const showCustom = customOpen || (!!cfg && !isPreset(cfg.delay));
+  const applyCustom = (raw) => {
+    const digits = raw.replace(/[^\d]/g, '').slice(0, 4);
+    setText(digits);
+    const n = Math.min(MAX_DELAY, Number(digits));
+    if (digits && n >= 1) {
+      setDelay(n);
+      onChanged();
+    }
+  };
 
   const verify = (next) => async (pin) => {
     const r = await verifyPin(pin);
@@ -64,10 +77,32 @@ export default function LockSheet({ cfg, onChanged, onClose }) {
               <span className="lbl">Lock again</span>
               <div className="seg" role="radiogroup" aria-label="Lock again">
                 {DELAYS.map(([d, label]) => (
-                  <button key={d} type="button" role="radio" aria-checked={cfg.delay === d} className={cfg.delay === d ? 'on' : ''} onClick={() => { setDelay(d); onChanged(); }}>
+                  <button key={d} type="button" role="radio" aria-checked={!showCustom && cfg.delay === d} className={!showCustom && cfg.delay === d ? 'on' : ''} onClick={() => { setCustomOpen(false); setDelay(d); onChanged(); }}>
                     {label}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={showCustom}
+                  className={showCustom ? 'on' : ''}
+                  onClick={() => {
+                    setCustomOpen(true);
+                    if (isPreset(cfg.delay)) applyCustom(text || '10');
+                  }}
+                >
+                  Custom
+                </button>
+              </div>
+              <div className={'collapse' + (showCustom ? ' open' : '')} aria-hidden={!showCustom}>
+                <div className="collapse-in">
+                  <div className="customtime">
+                    <label htmlFor="lock-min">Lock after</label>
+                    <input id="lock-min" inputMode="numeric" value={text} onChange={(e) => applyCustom(e.target.value)} onBlur={() => !text && applyCustom('10')} aria-describedby="lock-min-hint" />
+                    <span>minutes</span>
+                  </div>
+                  <p id="lock-min-hint" className="hint">{Number(text) > 0 ? `Locks ${delayLabel(Math.min(MAX_DELAY, Number(text)))}` : 'Type a number of minutes'} · up to 24 hours</p>
+                </div>
               </div>
             </div>
             <button className="btn secondary" onClick={() => setStep('verify-change')}>Change PIN</button>

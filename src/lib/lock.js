@@ -1,6 +1,7 @@
 // Optional PIN lock, kept on this device only. A casual lock: it stops someone who picks up an
 // unlocked phone, it is not protection against someone who can open the browser's developer tools.
 const KEY = 'fee-register-lock-v1';
+export const MAX_DELAY = 1440; // minutes (24 hours)
 export const DELAYS = [
   [0, 'Right away'],
   [1, '1 minute'],
@@ -19,7 +20,7 @@ async function derive(pin, salt) {
 export function loadLock() {
   try {
     const v = JSON.parse(localStorage.getItem(KEY) || 'null');
-    if (v && v.hash && v.salt) return { hash: v.hash, salt: v.salt, delay: [0, 1, 5].includes(v.delay) ? v.delay : 1, fails: v.fails || 0, until: v.until || 0 };
+    if (v && v.hash && v.salt) return { hash: v.hash, salt: v.salt, delay: Number.isInteger(v.delay) && v.delay >= 0 && v.delay <= MAX_DELAY ? v.delay : 1, fails: v.fails || 0, until: v.until || 0 };
   } catch {
     /* unreadable: treat as no lock */
   }
@@ -68,4 +69,10 @@ export async function verifyPin(pin) {
   return wait ? { ok: false, wait } : { ok: false, left: 5 - fails };
 }
 
-export const delayLabel = (d) => (d === 0 ? 'right away' : d === 1 ? 'after 1 minute away' : `after ${d} minutes away`);
+export const prettyMinutes = (m) => {
+  if (m < 60) return `${m} minute${m === 1 ? '' : 's'}`;
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  return `${h} hour${h === 1 ? '' : 's'}${r ? ` ${r} min` : ''}`;
+};
+export const delayLabel = (d) => (d === 0 ? 'right away' : `after ${prettyMinutes(d)} away`);
