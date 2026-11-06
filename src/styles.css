@@ -631,3 +631,24 @@ input.bright::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; 
 @keyframes slideInR { from { transform: translateX(48px); opacity: 0; } }
 @keyframes slideInL { from { transform: translateX(-48px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .screen.from-right, .screen.from-left { animation: none; } }
+
+/* offline / sync pill */
+.syncpill {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 6px);
+  left: 50%;
+  z-index: 40;
+  transform: translate(-50%, -140%);
+  opacity: 0;
+  pointer-events: none;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  background: var(--inv);
+  color: var(--on-inv);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.25s ease;
+  white-space: nowrap;
+}
+.syncpill.show { transform: translate(-50%, 0); opacity: 0.95; }
+.syncpill.off { background: var(--amber-tint); color: var(--amber-ink); box-shadow: 0 0 0 1px var(--amber-dark) inset; }

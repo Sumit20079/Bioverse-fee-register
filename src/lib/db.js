@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { addMonths, currentMonth, pad } from './dates';
+import { createSynced } from './offline';
+import { idbGet, idbSet } from './idb';
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -116,18 +118,26 @@ const studentRow = (s) => ({
   active: s.active ?? true,
 });
 
+// Insert-or-update with a client-made id, so a row created offline keeps its id when it reaches the server.
+async function put(table, id, row) {
+  if (!id) return check(await supabase.from(table).insert(row));
+  const { data, error } = await supabase.from(table).update(row).eq('id', id).select('id');
+  if (error) throw error;
+  if (!data.length) check(await supabase.from(table).insert({ id, ...row }));
+}
+
 const remote = {
-  async load() {
+  async loadRaw() {
     const [batches, students, payments] = await Promise.all([
       fetchAll('batches'),
       fetchAll('students'),
       fetchAll('payments'),
     ]);
-    return shape({
+    return {
       batches,
       students: students.map((s) => ({ ...s, joined_month: asMonth(s.joined_month) })),
       payments: payments.map((p) => ({ ...p, month: asMonth(p.month) })),
-    });
+    };
   },
   // Everything in the database as plain data, including what is in "Recently deleted".
   async backup() {
@@ -140,19 +150,19 @@ const remote = {
   },
   async saveBatch(b) {
     const row = { name: b.name, fee: b.fee, ...(b.fee_history ? { fee_history: b.fee_history } : {}) };
-    check(b.id ? await supabase.from('batches').update(row).eq('id', b.id) : await supabase.from('batches').insert(row));
+    await put('batches', b.id, row);
   },
   async saveStudent(s) {
     const row = studentRow(s);
-    check(s.id ? await supabase.from('students').update(row).eq('id', s.id) : await supabase.from('students').insert(row));
+    await put('students', s.id, row);
   },
   async addStudents(list) {
-    check(await supabase.from('students').insert(list.map(studentRow)));
+    check(await supabase.from('students').upsert(list.map((s) => ({ ...(s.id ? { id: s.id } : {}), ...studentRow(s) })), { onConflict: 'id', ignoreDuplicates: true }));
   },
   // A month can have several payments. With an id this edits that one; without, it adds a new one.
   async savePayment(p) {
     const row = { student_id: p.student_id, month: asDate(p.month), amount: p.amount, paid_on: p.paid_on, note: p.note || '', settled: p.settled ?? true };
-    check(p.id ? await supabase.from('payments').update(row).eq('id', p.id) : await supabase.from('payments').insert(row));
+    await put('payments', p.id, row);
   },
   async removePayments(ids) {
     for (let i = 0; i < ids.length; i += 100) {
@@ -315,123 +325,182 @@ function writeDemo(data) {
   }
 }
 
-const demo = {
+export function makeLocal({ read, write }) {
+  const local = {
   async load() {
-    return shape(structuredClone(readDemo()));
+    return shape(structuredClone(read()));
   },
   async backup() {
-    return structuredClone(readDemo());
+    return structuredClone(read());
   },
   async saveBatch(b) {
-    const d = readDemo();
-    if (b.id) d.batches = d.batches.map((x) => (x.id === b.id ? { ...x, name: b.name, fee: b.fee, ...(b.fee_history ? { fee_history: b.fee_history } : {}) } : x));
-    else d.batches.push({ id: uid(), name: b.name, fee: b.fee });
-    writeDemo(d);
+    const d = read();
+    if (b.id && d.batches.some((x) => x.id === b.id)) d.batches = d.batches.map((x) => (x.id === b.id ? { ...x, name: b.name, fee: b.fee, ...(b.fee_history ? { fee_history: b.fee_history } : {}) } : x));
+    else d.batches.push({ id: b.id || uid(), name: b.name, fee: b.fee, ...(b.fee_history ? { fee_history: b.fee_history } : {}) });
+    write(d);
   },
   async saveStudent(s) {
-    const d = readDemo();
+    const d = read();
     const row = studentRow(s);
     row.joined_month = s.joined_month;
-    if (s.id) d.students = d.students.map((x) => (x.id === s.id ? { ...x, ...row } : x));
-    else d.students.push({ id: uid(), ...row });
-    writeDemo(d);
+    if (s.id && d.students.some((x) => x.id === s.id)) d.students = d.students.map((x) => (x.id === s.id ? { ...x, ...row } : x));
+    else d.students.push({ id: s.id || uid(), ...row });
+    write(d);
   },
   async addStudents(list) {
-    const d = readDemo();
-    for (const s of list) d.students.push({ id: uid(), ...studentRow(s), joined_month: s.joined_month });
-    writeDemo(d);
+    const d = read();
+    for (const s of list) d.students.push({ id: s.id || uid(), ...studentRow(s), joined_month: s.joined_month });
+    write(d);
   },
   async savePayment(p) {
-    const d = readDemo();
+    const d = read();
     const row = { student_id: p.student_id, month: p.month, amount: p.amount, paid_on: p.paid_on, note: p.note || '', settled: p.settled ?? true };
     const i = p.id ? d.payments.findIndex((x) => x.id === p.id) : -1;
     if (i >= 0) d.payments[i] = { ...d.payments[i], ...row };
-    else d.payments.push({ id: uid(), ...row });
-    writeDemo(d);
+    else d.payments.push({ id: p.id || uid(), ...row });
+    write(d);
   },
   async removePayments(ids) {
     const gone = new Set(ids);
-    const d = readDemo();
+    const d = read();
     d.payments = d.payments.filter((x) => !gone.has(x.id));
-    writeDemo(d);
+    write(d);
   },
   async restore(plan) {
-    const d = readDemo();
+    const d = read();
     d.batches.push(...plan.batches);
     d.students.push(...plan.students.map((s) => ({ ...s, joined_month: asMonth(s.joined_month) })));
     d.payments.push(...plan.payments.map((x) => ({ ...x, month: asMonth(x.month) })));
-    writeDemo(d);
+    write(d);
   },
   async moveStudents(rows) {
     const by = new Map(rows.map((r) => [r.id, r]));
-    const d = readDemo();
+    const d = read();
     d.students = d.students.map((x) => (by.has(x.id) ? { ...x, batch_id: by.get(x.id).batch_id, batch_history: by.get(x.id).batch_history } : x));
-    writeDemo(d);
+    write(d);
     return true;
   },
   async deleteStudent(id) {
-    await demo.deleteStudents([id]);
+    await local.deleteStudents([id]);
   },
   async deleteStudents(ids) {
     const gone = new Set(ids);
     const t = stamp();
-    const d = readDemo();
+    const d = read();
     d.students = d.students.map((x) => (gone.has(x.id) ? { ...x, deleted_at: t } : x));
-    writeDemo(d);
+    write(d);
   },
   async deleteBatch(id) {
     const t = stamp();
-    const d = readDemo();
+    const d = read();
     d.students = d.students.map((x) => (x.batch_id === id && !x.deleted_at ? { ...x, deleted_at: t } : x));
     d.batches = d.batches.map((b) => (b.id === id ? { ...b, deleted_at: t } : b));
-    writeDemo(d);
+    write(d);
   },
   async restoreStudents(ids) {
     const back = new Set(ids);
-    const d = readDemo();
+    const d = read();
     const batchIds = new Set(d.students.filter((x) => back.has(x.id)).map((x) => x.batch_id));
     d.students = d.students.map((x) => (back.has(x.id) ? { ...x, deleted_at: null } : x));
     d.batches = d.batches.map((b) => (batchIds.has(b.id) ? { ...b, deleted_at: null } : b));
-    writeDemo(d);
+    write(d);
   },
   async restoreBatch(id) {
-    const d = readDemo();
+    const d = read();
     const t = d.batches.find((b) => b.id === id)?.deleted_at;
     d.batches = d.batches.map((b) => (b.id === id ? { ...b, deleted_at: null } : b));
     if (t) d.students = d.students.map((x) => (x.batch_id === id && x.deleted_at === t ? { ...x, deleted_at: null } : x));
-    writeDemo(d);
+    write(d);
   },
   async purgeTrash(upTo) {
     const old = (x) => x.deleted_at && Date.parse(x.deleted_at) <= Date.parse(upTo);
-    const d = readDemo();
+    const d = read();
     const gone = new Set(d.students.filter(old).map((s) => s.id));
     d.payments = d.payments.filter((p) => !gone.has(p.student_id));
     d.students = d.students.filter((s) => !gone.has(s.id));
     d.batches = d.batches.filter((b) => !old(b));
-    writeDemo(d);
+    write(d);
   },
   async restoreTrash(upTo) {
     const old = (x) => x.deleted_at && Date.parse(x.deleted_at) <= Date.parse(upTo);
-    const d = readDemo();
+    const d = read();
     d.batches = d.batches.map((b) => (old(b) ? { ...b, deleted_at: null } : b));
     d.students = d.students.map((s) => (old(s) ? { ...s, deleted_at: null } : s));
-    writeDemo(d);
+    write(d);
   },
   async purgeStudents(ids) {
     const gone = new Set(ids);
-    const d = readDemo();
+    const d = read();
     d.students = d.students.filter((s) => !gone.has(s.id));
     d.payments = d.payments.filter((p) => !gone.has(p.student_id));
-    writeDemo(d);
+    write(d);
   },
   async purgeBatch(id) {
-    const d = readDemo();
+    const d = read();
     const gone = new Set(d.students.filter((s) => s.batch_id === id).map((s) => s.id));
     d.payments = d.payments.filter((p) => !gone.has(p.student_id));
     d.students = d.students.filter((s) => s.batch_id !== id);
     d.batches = d.batches.filter((b) => b.id !== id);
-    writeDemo(d);
+    write(d);
+  },
+  };
+  return local;
+}
+
+const demo = makeLocal({ read: readDemo, write: writeDemo });
+
+// With a real database, everything goes through the offline layer: a copy on this device, plus a queue of
+// changes waiting to be sent. Without one (demo), the local copy is the whole app.
+const synced = supabase
+  ? createSynced({
+      remote,
+      makeLocal,
+      uid,
+      store: {
+        get: () => idbGet('state'),
+        set: (v) => idbSet('state', v),
+      },
+    })
+  : null;
+
+const online = synced && {
+  ...synced,
+  async load() {
+    return shape(structuredClone(await synced.loadRaw()));
   },
 };
 
-export const backend = isDemo ? demo : remote;
+export const backend = isDemo ? demo : online;
+export const sync = synced?.sync || null;
+export const flushNow = () => synced?.flush();
+
+// Remember on this device that someone is signed in, so the app still opens with no signal (the saved login
+// can't be refreshed offline). Cleared on sign-out.
+const OFFLINE_FLAG = 'fee-register-offline-user';
+export const rememberSignedIn = (yes) => {
+  try {
+    if (yes) localStorage.setItem(OFFLINE_FLAG, '1');
+    else localStorage.removeItem(OFFLINE_FLAG);
+  } catch {
+    /* blocked storage */
+  }
+};
+export const wasSignedIn = () => {
+  try {
+    return localStorage.getItem(OFFLINE_FLAG) === '1';
+  } catch {
+    return false;
+  }
+};
+
+// Sends anything still waiting, then signs out and clears this device's copy of the data.
+export async function signOutSafe() {
+  if (synced) {
+    await synced.flush().catch(() => {});
+    const left = synced.sync.snapshot().pending;
+    if (left && !window.confirm(`${left} change${left === 1 ? ' has' : 's have'} not reached the server yet and will be lost if you sign out. Sign out anyway?`)) return;
+    await synced.sync.wipe();
+  }
+  rememberSignedIn(false);
+  await supabase.auth.signOut();
+}

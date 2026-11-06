@@ -26,6 +26,7 @@ export const Icon = {
   Check: make(<path d="M5 12l5 5 9-10" pathLength="1" />),
   Phone: make(<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" />),
   Chat: make(<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" />),
+  Sync: make(<><path d="M20 11a8 8 0 0 0-14.5-4M4 4v4h4" /><path d="M4 13a8 8 0 0 0 14.5 4M20 20v-4h-4" /></>),
   Download: make(<path d="M12 4v10m0 0l-4-4m4 4l4-4M5 20h14" />),
   Trash: make(<path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" />),
   Rupee: make(<path d="M7 5h10M7 9h10M9 5c5 0 6 5 0 5l5 8" />),

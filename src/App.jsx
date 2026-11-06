@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { backend, exitGuest, isDemo, isGuest, supabase } from './lib/db';
+import { backend, exitGuest, isDemo, isGuest, rememberSignedIn, signOutSafe, supabase, sync, wasSignedIn } from './lib/db';
+import SyncPill from './components/SyncPill';
 import { currentMonth, longDateLabel, monthLabel, monthsBetween, todayISO } from './lib/dates';
 import { dueList, feeOn, monthView, staleSettled, withBatchMove, withFeeChange } from './lib/calc';
 import { download, receiptContact, receiptText, waLink } from './lib/format';
@@ -53,8 +54,13 @@ export default function App() {
 
   useEffect(() => {
     if (isDemo) return undefined;
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
+    // Offline, the saved login can't be refreshed, so a device that was signed in keeps working on its own copy.
+    const gotSession = (s) => {
+      if (s) rememberSignedIn(true);
+      setSession(s || (wasSignedIn() && !navigator.onLine ? { offline: true } : null));
+    };
+    supabase.auth.getSession().then(({ data }) => gotSession(data.session), () => setSession(wasSignedIn() ? { offline: true } : null));
+    const { data } = supabase.auth.onAuthStateChange((_event, s) => gotSession(s));
     return () => data.subscription.unsubscribe();
   }, []);
 
@@ -84,6 +90,8 @@ function Register() {
   }, []);
   const [data, setData] = useState(null);
   const [loadError, setLoadError] = useState('');
+  const [net, setNet] = useState(() => (sync ? sync.snapshot() : null));
+  useEffect(() => (sync ? sync.subscribe(setNet) : undefined), []);
   const [tab, setTab] = useState('overview');
   const [batchId, setBatchId] = useState(null);
   const [month, setMonth] = useState(currentMonth());
@@ -190,6 +198,26 @@ function Register() {
       window.removeEventListener('focus', onShow);
     };
   }, []);
+
+  // The moment the signal comes back, send what is waiting and refresh.
+  useEffect(() => {
+    if (!sync) return undefined;
+    const back = () => {
+      queue.current = queue.current.then(reload);
+    };
+    window.addEventListener('online', back);
+    return () => window.removeEventListener('online', back);
+  }, [reload]);
+
+  // A change the server refused while syncing is reported once.
+  useEffect(() => {
+    if (net?.error) {
+      flash(net.error);
+      sync.clearError();
+    }
+  }, [net?.error, flash]);
+
+  const syncNow = () => act(async () => {}).then(() => flash(sync.snapshot().pending ? 'Still offline: changes are saved on this device' : 'Up to date'));
 
   // Show a payment change on screen straight away; the server catches up behind it.
   const showPayment = useCallback((p) => {
@@ -324,7 +352,7 @@ function Register() {
           onTrash={() => setSheet({ type: 'trash' })}
           onAppearance={() => setSheet({ type: 'appearance' })}
           trashCount={data.trash.batches.length + data.trash.students.length}
-          onSignOut={() => supabase.auth.signOut()}
+          onSignOut={signOutSafe}
         />
       </>
     );
@@ -554,7 +582,9 @@ function Register() {
         isDemo={isDemo}
         isGuest={isGuest}
         onExitDemo={exitGuest}
-        onSignOut={() => supabase.auth.signOut()}
+        onSignOut={signOutSafe}
+        net={isDemo ? null : net}
+        onSyncNow={syncNow}
       />
     );
   } else if (sheet?.type === 'lock') {
@@ -609,10 +639,11 @@ function Register() {
             clearLock();
             setLockCfg(null);
             setLocked(false);
-            if (!isDemo) supabase.auth.signOut();
+            if (!isDemo) signOutSafe();
           }}
         />
       )}
+      {!isDemo && <SyncPill net={net} />}
       <div className={'screen' + (swipeDir ? ` from-${swipeDir}` : '')} key={`${tab}-${batchId || ''}`} ref={pageRef}>
         <SettingsContext.Provider value={() => setSheet({ type: 'settings' })}>{body}</SettingsContext.Provider>
       </div>

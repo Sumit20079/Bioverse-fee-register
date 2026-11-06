@@ -2,7 +2,7 @@ import { Icon } from './Icons';
 import { useState } from 'react';
 import Sheet from './Sheet';
 
-export default function SettingsSheet({ onClose, onAppearance, onLock, lockCfg, onAbout, onBackup, onRestore, onTrash, trashCount, isDemo, isGuest, onExitDemo, onSignOut }) {
+export default function SettingsSheet({ onClose, onAppearance, onLock, lockCfg, onAbout, onBackup, onRestore, onTrash, trashCount, isDemo, isGuest, onExitDemo, onSignOut, net, onSyncNow }) {
   const [armed, setArmed] = useState(false);
   const Row = ({ icon: Ico, title, sub, onClick, danger }) => (
     <button className={'setrow' + (danger ? ' danger' : '')} onClick={onClick}>
@@ -23,6 +23,22 @@ export default function SettingsSheet({ onClose, onAppearance, onLock, lockCfg, 
       </div>
       <div className="setgroup">
         <h3>Your data</h3>
+        {net && (
+          <Row
+            icon={Icon.Sync}
+            title="Sync now"
+            sub={
+              !net.online
+                ? `Offline${net.pending ? ` · ${net.pending} change${net.pending === 1 ? '' : 's'} saved on this device` : ''}`
+                : net.pending
+                  ? `${net.pending} change${net.pending === 1 ? '' : 's'} waiting to send`
+                  : net.syncedAt
+                    ? `Up to date · synced ${new Date(net.syncedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+                    : 'Up to date'
+            }
+            onClick={onSyncNow}
+          />
+        )}
         <Row icon={Icon.Download} title="Download backup" sub="Saves everything to a file" onClick={onBackup} />
         <Row icon={Icon.Upload} title="Restore from backup" sub="Adds back anything missing" onClick={onRestore} />
         <Row icon={Icon.Trash} title="Recently deleted" sub={trashCount > 0 ? `${trashCount} item${trashCount === 1 ? '' : 's'} you can bring back` : 'Nothing here'} onClick={onTrash} />
