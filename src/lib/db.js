@@ -92,7 +92,8 @@ function shape(raw) {
     }))
     .sort(newest);
 
-  return { batches: liveBatches, students, payments, trash: { batches: trashBatches, students: trashStudents } };
+  // allBatches also holds deleted ones, so months a student spent in a since-deleted batch keep that batch's fee
+  return { batches: liveBatches, allBatches: raw.batches, students, payments, trash: { batches: trashBatches, students: trashStudents } };
 }
 
 const stamp = () => new Date().toISOString();

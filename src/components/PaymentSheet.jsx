@@ -51,7 +51,8 @@ export default function PaymentSheet({ student, batch, batches, month: initialMo
   }, [month, rowsKey, fee]);
 
   const value = Number(amount);
-  const valid = amount !== '' && Number.isFinite(value) && value >= 0 && paidOn;
+  // ₹0 only makes sense as a waiver of the whole rest of the month
+  const valid = amount !== '' && Number.isFinite(value) && (value > 0 || waive) && paidOn;
   const others = rows.filter((r) => r.id !== editId).reduce((t, r) => t + r.amount, 0);
   const leftBefore = Math.max(0, fee - others);
   const leftAfter = Math.max(0, leftBefore - (valid ? Math.round(value) : 0));
@@ -156,7 +157,7 @@ export default function PaymentSheet({ student, batch, batches, month: initialMo
         </p>
       </div>
 
-      {valid && Math.round(value) < leftBefore && (
+      {amount !== '' && Number.isFinite(value) && Math.round(value) < leftBefore && (
         <label className="check">
           <input type="checkbox" checked={waive} onChange={(e) => setWaive(e.target.checked)} />
           Waive the remaining {rupees(leftBefore - Math.round(value))} (discount, counts as fully paid)

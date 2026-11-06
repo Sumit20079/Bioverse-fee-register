@@ -55,8 +55,8 @@ export const canGoNext = (kind, anchor) => periodOf(kind, step(kind, anchor, 1))
 
 export function summarise(data, period, batchId) {
   const student = new Map(data.students.map((s) => [s.id, s]));
-  const batch = new Map(data.batches.map((b) => [b.id, b]));
-  const known = new Set(data.batches.map((b) => b.id));
+  const batch = new Map((data.allBatches || data.batches).map((b) => [b.id, b]));
+  const known = new Set(batch.keys());
   // the batch a payment counts for is the one the student was in for the month it paid
   const batchOf = (p) => batch.get(batchAt(student.get(p.student_id), p.month, known));
   const inRange = data.payments.filter((p) => p.paid_on >= period.start && p.paid_on <= period.end && student.has(p.student_id));

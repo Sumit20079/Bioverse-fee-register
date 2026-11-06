@@ -357,7 +357,7 @@ function Register() {
         <PaymentSheet
           student={student}
           batch={batch}
-          batches={data.batches}
+          batches={data.allBatches || data.batches}
           month={sheet.month}
           monthOptions={[...options].sort()}
           paymentsByMonth={byMonth}
@@ -369,13 +369,13 @@ function Register() {
             const before = byMonth.get(p.month) || [];
             const after = p.id ? before.map((x) => (x.id === p.id ? { ...x, ...p } : x)) : [...before, p];
             // editing an earlier instalment can leave the others flagged "settled" although the month is now short
-            const stale = p.id ? staleSettled(before, after, feeOn(student, data.batches, p.month)).filter((x) => x.id !== p.id) : [];
+            const stale = p.id ? staleSettled(before, after, feeOn(student, data.allBatches || data.batches, p.month)).filter((x) => x.id !== p.id) : [];
             for (const x of stale) {
               showPayment({ ...x, settled: false });
               act(() => backend.savePayment({ ...x, settled: false }));
             }
             const others = before.filter((x) => x.id !== p.id).reduce((t, x) => t + x.amount, 0);
-            const balance = p.settled ? 0 : Math.max(0, feeOn(student, data.batches, p.month) - others - p.amount);
+            const balance = p.settled ? 0 : Math.max(0, feeOn(student, data.allBatches || data.batches, p.month) - others - p.amount);
             act(() => backend.savePayment(p)).then((ok) => {
               if (ok) flash('Payment saved', receiptAction(student, batch, p, balance));
             });
@@ -385,7 +385,7 @@ function Register() {
             const before = byMonth.get(m) || [];
             const all = before.every((x) => ids.includes(x.id));
             const after = before.filter((x) => !ids.includes(x.id));
-            const stale = staleSettled(before, after, feeOn(student, data.batches, m));
+            const stale = staleSettled(before, after, feeOn(student, data.allBatches || data.batches, m));
             hidePayments(ids);
             for (const x of stale) showPayment({ ...x, settled: false });
             closePay();
@@ -404,7 +404,7 @@ function Register() {
         <StudentHistory
           student={student}
           batch={batch}
-          batches={data.batches}
+          batches={data.allBatches || data.batches}
           payments={data.payments.filter((p) => p.student_id === student.id)}
           onPay={(s, m) => openPay(s, m, true)}
           onEdit={(s) => setSheet({ type: 'student', student: s })}

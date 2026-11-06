@@ -138,14 +138,14 @@ export function monthView(data, month) {
 // Active students who still owe something for one or more months up to and including `month`.
 export function dueList(data, month) {
   const by = groupPayments(data.payments);
-  const batchById = new Map(data.batches.map((b) => [b.id, b]));
+  const batchById = new Map((data.allBatches || data.batches).map((b) => [b.id, b]));
   const known = new Set(batchById.keys());
   const out = [];
 
   for (const student of data.students) {
     if (!student.active) continue;
     const batch = batchById.get(student.batch_id);
-    if (!batch) continue;
+    if (!batch || batch.deleted_at) continue;
     const months = [];
     let amount = 0;
     let partial = false;
