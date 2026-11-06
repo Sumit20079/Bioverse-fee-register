@@ -1,4 +1,5 @@
-// A small pill under the status bar while the app is offline or still sending changes. Gone when everything is synced.
+// A small pill above the header while the app is offline or still sending changes. It slides in and pushes the page
+// down (so it never covers the buttons) and is gone when everything is synced.
 export default function SyncPill({ net }) {
   if (!net) return null;
   let text = '';
@@ -10,8 +11,10 @@ export default function SyncPill({ net }) {
     text = net.pending ? `Syncing ${net.pending}…` : 'Syncing…';
   }
   return (
-    <div className={'syncpill' + (text ? ' show' : '') + (tone ? ` ${tone}` : '')} role="status" aria-live="polite">
-      {text || ' '}
+    <div className={'syncwrap' + (text ? ' show' : '')} role="status" aria-live="polite">
+      <div>
+        <span className={'syncpill' + (tone ? ` ${tone}` : '')}>{text || ' '}</span>
+      </div>
     </div>
   );
 }
