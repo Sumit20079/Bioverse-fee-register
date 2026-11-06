@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Sheet from './Sheet';
-import { currentMonth } from '../lib/dates';
+import { currentMonth, monthLabel, monthsBetween } from '../lib/dates';
 
 export default function StudentSheet({ student, batches, defaultBatchId, month, paymentCount = 0, onSave, onDelete, onHistory, onClose }) {
   const editing = Boolean(student);
@@ -9,6 +9,7 @@ export default function StudentSheet({ student, batches, defaultBatchId, month, 
   const [parentPhone, setParentPhone] = useState(student?.parent_phone || '');
   const [batchId, setBatchId] = useState(student?.batch_id || defaultBatchId || batches[0]?.id || '');
   const [joined, setJoined] = useState(student?.joined_month || month || currentMonth());
+  const [moveFrom, setMoveFrom] = useState(currentMonth());
   const [active, setActive] = useState(student?.active ?? true);
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -24,6 +25,7 @@ export default function StudentSheet({ student, batches, defaultBatchId, month, 
       phone: phone.replace(/[^\d+]/g, ''),
       parent_phone: parentPhone.replace(/[^\d+]/g, ''),
       batch_id: batchId,
+      move_from: moveFrom,
       joined_month: joined,
       active,
     });
@@ -81,6 +83,17 @@ export default function StudentSheet({ student, batches, defaultBatchId, month, 
             ))}
           </select>
         </div>
+        {editing && batchId !== student.batch_id && (
+          <div className="field">
+            <label htmlFor="st-movefrom">Move from</label>
+            <select id="st-movefrom" value={moveFrom} onChange={(e) => setMoveFrom(e.target.value)}>
+              {monthsBetween(student.joined_month, currentMonth()).reverse().map((m) => (
+                <option key={m} value={m}>{monthLabel(m)}{m === currentMonth() ? ' (this month)' : ''}</option>
+              ))}
+            </select>
+            <p className="hint">Earlier months stay in their old batch with their old fee.</p>
+          </div>
+        )}
         <div className="field">
           <label htmlFor="st-joined">Fees start from</label>
           <input id="st-joined" type="month" value={joined} onChange={(e) => setJoined(e.target.value)} />

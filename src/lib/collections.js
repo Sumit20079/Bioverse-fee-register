@@ -1,3 +1,4 @@
+import { batchAt } from './calc';
 import { addMonths, dateLabel, longDateLabel, monthLabel, monthShort, pad, todayISO } from './dates';
 
 // Money counted by the day it was received (paid_on), not by the month it was paying for.
@@ -55,12 +56,15 @@ export const canGoNext = (kind, anchor) => periodOf(kind, step(kind, anchor, 1))
 export function summarise(data, period, batchId) {
   const student = new Map(data.students.map((s) => [s.id, s]));
   const batch = new Map(data.batches.map((b) => [b.id, b]));
+  const known = new Set(data.batches.map((b) => b.id));
+  // the batch a payment counts for is the one the student was in for the month it paid
+  const batchOf = (p) => batch.get(batchAt(student.get(p.student_id), p.month, known));
   const inRange = data.payments.filter((p) => p.paid_on >= period.start && p.paid_on <= period.end && student.has(p.student_id));
 
   // overall split by batch (always across every batch, so the picker totals add up)
   const by = new Map();
   for (const p of inRange) {
-    const b = batch.get(student.get(p.student_id).batch_id);
+    const b = batchOf(p);
     if (!b) continue;
     const e = by.get(b.id) || { batch: b, amount: 0, count: 0 };
     e.amount += p.amount;
@@ -70,8 +74,8 @@ export function summarise(data, period, batchId) {
   const batches = [...by.values()].sort((a, b) => b.amount - a.amount);
 
   const rows = inRange
-    .filter((p) => batchId === 'all' || student.get(p.student_id).batch_id === batchId)
-    .map((p) => ({ payment: p, student: student.get(p.student_id), batch: batch.get(student.get(p.student_id).batch_id) }))
+    .filter((p) => batchId === 'all' || batchOf(p)?.id === batchId)
+    .map((p) => ({ payment: p, student: student.get(p.student_id), batch: batchOf(p) }))
     .sort((a, b) => b.payment.paid_on.localeCompare(a.payment.paid_on) || String(b.payment.created_at || '').localeCompare(String(a.payment.created_at || '')));
   const total = rows.reduce((t, r) => t + r.payment.amount, 0);
 

@@ -14,6 +14,8 @@ create table public.students (
   id           uuid primary key default gen_random_uuid(),
   owner_id     uuid not null default auth.uid() references auth.users (id) on delete cascade,
   batch_id     uuid not null references public.batches (id) on delete restrict,
+  -- where the student was in earlier months: [{"from":"2026-09","batch_id":"..."}], oldest first (null = never moved)
+  batch_history jsonb,
   name         text not null,
   phone        text not null default '',
   parent_phone text not null default '',

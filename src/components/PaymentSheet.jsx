@@ -1,20 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import Sheet from './Sheet';
 import { dateLabel, longDateLabel, monthLabel, todayISO } from '../lib/dates';
-import { feeFor, monthStatus } from '../lib/calc';
+import { feeOn, monthStatus } from '../lib/calc';
 import { receiptContact, receiptText, rupees, waLink } from '../lib/format';
 
 const isPending = (id) => String(id).startsWith('pending-');
 
 // paymentsByMonth: month -> this student's payments for it. A month can hold several
 // instalments; tap one to edit it, or add a new one.
-export default function PaymentSheet({ student, batch, month: initialMonth, monthOptions, paymentsByMonth, onSave, onRemove, onClose }) {
+export default function PaymentSheet({ student, batch, batches, month: initialMonth, monthOptions, paymentsByMonth, onSave, onRemove, onClose }) {
   const [month, setMonth] = useState(initialMonth);
   const rows = useMemo(
     () => [...(paymentsByMonth.get(month) || [])].sort((a, b) => (a.paid_on || '').localeCompare(b.paid_on || '')),
     [paymentsByMonth, month],
   );
-  const fee = feeFor(batch, month);
+  const fee = feeOn(student, batches, month);
   const ms = monthStatus(rows, fee);
 
   const [editId, setEditId] = useState(null); // null = adding a new payment
@@ -95,7 +95,7 @@ export default function PaymentSheet({ student, batch, month: initialMonth, mont
     : null;
 
   const monthTag = (m) => {
-    const s = monthStatus(paymentsByMonth.get(m) || [], feeFor(batch, m)).status;
+    const s = monthStatus(paymentsByMonth.get(m) || [], feeOn(student, batches, m)).status;
     return s === 'paid' ? ' (paid)' : s === 'part' ? ' (part paid)' : '';
   };
 

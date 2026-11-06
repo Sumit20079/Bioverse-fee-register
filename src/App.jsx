@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { backend, exitGuest, isDemo, isGuest, supabase } from './lib/db';
 import { currentMonth, longDateLabel, monthLabel, monthsBetween, todayISO } from './lib/dates';
-import { dueList, feeFor, monthView, staleSettled, withFeeChange } from './lib/calc';
+import { dueList, feeOn, monthView, staleSettled, withBatchMove, withFeeChange } from './lib/calc';
 import { download, receiptContact, receiptText, waLink } from './lib/format';
 import Login from './components/Login';
 import Overview from './components/Overview';
@@ -357,6 +357,7 @@ function Register() {
         <PaymentSheet
           student={student}
           batch={batch}
+          batches={data.batches}
           month={sheet.month}
           monthOptions={[...options].sort()}
           paymentsByMonth={byMonth}
@@ -368,13 +369,13 @@ function Register() {
             const before = byMonth.get(p.month) || [];
             const after = p.id ? before.map((x) => (x.id === p.id ? { ...x, ...p } : x)) : [...before, p];
             // editing an earlier instalment can leave the others flagged "settled" although the month is now short
-            const stale = p.id ? staleSettled(before, after, feeFor(batch, p.month)).filter((x) => x.id !== p.id) : [];
+            const stale = p.id ? staleSettled(before, after, feeOn(student, data.batches, p.month)).filter((x) => x.id !== p.id) : [];
             for (const x of stale) {
               showPayment({ ...x, settled: false });
               act(() => backend.savePayment({ ...x, settled: false }));
             }
             const others = before.filter((x) => x.id !== p.id).reduce((t, x) => t + x.amount, 0);
-            const balance = p.settled ? 0 : Math.max(0, feeFor(batch, p.month) - others - p.amount);
+            const balance = p.settled ? 0 : Math.max(0, feeOn(student, data.batches, p.month) - others - p.amount);
             act(() => backend.savePayment(p)).then((ok) => {
               if (ok) flash('Payment saved', receiptAction(student, batch, p, balance));
             });
@@ -384,7 +385,7 @@ function Register() {
             const before = byMonth.get(m) || [];
             const all = before.every((x) => ids.includes(x.id));
             const after = before.filter((x) => !ids.includes(x.id));
-            const stale = staleSettled(before, after, feeFor(batch, m));
+            const stale = staleSettled(before, after, feeOn(student, data.batches, m));
             hidePayments(ids);
             for (const x of stale) showPayment({ ...x, settled: false });
             closePay();
@@ -403,6 +404,7 @@ function Register() {
         <StudentHistory
           student={student}
           batch={batch}
+          batches={data.batches}
           payments={data.payments.filter((p) => p.student_id === student.id)}
           onPay={(s, m) => openPay(s, m, true)}
           onEdit={(s) => setSheet({ type: 'student', student: s })}
@@ -419,7 +421,20 @@ function Register() {
         month={month}
         paymentCount={sheet.student ? data.payments.filter((p) => p.student_id === sheet.student.id).length : 0}
         onClose={close}
-        onSave={(s) => closeAfter(act(() => backend.saveStudent(s), s.id ? 'Student updated' : 'Student added'))}
+        onSave={(s) => {
+          const cur = sheet.student;
+          if (s.id && cur && s.batch_id !== cur.batch_id) {
+            // changing the batch is a move: keep the old months where they were
+            const row = { id: s.id, ...withBatchMove(cur, s.batch_id, s.move_from || currentMonth(), currentMonth()) };
+            return closeAfter(
+              act(async () => {
+                await backend.saveStudent({ ...s, batch_id: cur.batch_id });
+                await backend.moveStudents([row]);
+              }, 'Student updated'),
+            );
+          }
+          return closeAfter(act(() => backend.saveStudent(s), s.id ? 'Student updated' : 'Student added'));
+        }}
         onDelete={(id) =>
           closeAfter(act(() => backend.deleteStudent(id))).then((ok) =>
             undoable(ok, 'Student deleted', () => backend.restoreStudents([id])),
@@ -488,16 +503,22 @@ function Register() {
         from={from}
         batches={data.batches}
         onClose={close}
-        onConfirm={(dest) => {
-          const ids = [...mv];
+        month={month}
+        onConfirm={(dest, fromMonth) => {
+          const moving = data.students.filter((s) => mv.has(s.id));
+          const rows = moving.map((s) => ({ id: s.id, ...withBatchMove(s, dest.id, fromMonth, currentMonth()) }));
+          const undoRows = moving.map((s) => ({ id: s.id, batch_id: s.batch_id, batch_history: s.batch_history ?? null }));
           close();
           sheet.done?.();
-          act(() => backend.moveStudents(ids, dest.id)).then((ok) => {
+          let kept = true;
+          act(async () => {
+            kept = await backend.moveStudents(rows);
+          }).then((ok) => {
             if (ok) {
-              flash(`Moved ${ids.length} student${ids.length === 1 ? '' : 's'} to ${dest.name}`, {
-                label: 'Undo',
-                onClick: () => act(() => backend.moveStudents(ids, from.id), 'Moved back'),
-              });
+              flash(
+                `Moved ${rows.length} student${rows.length === 1 ? '' : 's'} to ${dest.name}${kept ? '' : ' (history not saved: run add-move-history.sql in Supabase)'}`,
+                { label: 'Undo', onClick: () => act(() => backend.moveStudents(undoRows), 'Moved back') },
+              );
             }
           });
         }}

@@ -171,8 +171,19 @@ const remote = {
     await put('students', plan.students.map((s) => ({ ...strip(s), joined_month: asDate(asMonth(s.joined_month)) })));
     await put('payments', plan.payments.map((p) => ({ ...strip(p), month: asDate(asMonth(p.month)) })));
   },
-  async moveStudents(ids, batchId) {
-    for (const c of chunks(ids)) check(await supabase.from('students').update({ batch_id: batchId }).in('id', c));
+  // rows: [{id, batch_id, batch_history}]. Returns false when the database has no batch_history column yet
+  // (supabase/add-move-history.sql not run): the students still move, but without remembering where they were.
+  async moveStudents(rows) {
+    let saved = true;
+    for (const r of rows) {
+      let { error } = await supabase.from('students').update({ batch_id: r.batch_id, batch_history: r.batch_history }).eq('id', r.id);
+      if (error && /batch_history/i.test(`${error.message} ${error.details || ''}`)) {
+        saved = false;
+        ({ error } = await supabase.from('students').update({ batch_id: r.batch_id }).eq('id', r.id));
+      }
+      if (error) throw error;
+    }
+    return saved;
   },
   // Deleting moves things to "Recently deleted" (deleted_at is set); nothing is erased until
   // someone chooses "Delete forever".
@@ -350,11 +361,12 @@ const demo = {
     d.payments.push(...plan.payments.map((x) => ({ ...x, month: asMonth(x.month) })));
     writeDemo(d);
   },
-  async moveStudents(ids, batchId) {
-    const mv = new Set(ids);
+  async moveStudents(rows) {
+    const by = new Map(rows.map((r) => [r.id, r]));
     const d = readDemo();
-    d.students = d.students.map((x) => (mv.has(x.id) ? { ...x, batch_id: batchId } : x));
+    d.students = d.students.map((x) => (by.has(x.id) ? { ...x, batch_id: by.get(x.id).batch_id, batch_history: by.get(x.id).batch_history } : x));
     writeDemo(d);
+    return true;
   },
   async deleteStudent(id) {
     await demo.deleteStudents([id]);

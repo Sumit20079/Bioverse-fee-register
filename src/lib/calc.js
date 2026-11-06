@@ -17,6 +17,32 @@ export function withFeeChange(batch, fee, from) {
   return { fee, fee_history: [...kept, { from, fee }] };
 }
 
+// Which batch a student was in during `month`. `batch_history` lists the moves ({from:'YYYY-MM', batch_id}, oldest first);
+// the first entry is where they started and applies to every earlier month. Without history, their current batch.
+// `known` (a Set of batch ids still in use) makes a batch that has since been deleted fall back to the current one.
+export function batchAt(student, month, known) {
+  const h = student.batch_history;
+  if (!Array.isArray(h) || !h.length) return student.batch_id;
+  let id = h[0].batch_id;
+  for (const e of h) if (e.from <= month) id = e.batch_id;
+  return known && !known.has(id) ? student.batch_id : id;
+}
+
+// The fee a student owed for `month`: the fee of the batch they were in then.
+export function feeOn(student, batches, month) {
+  const known = new Set(batches.map((b) => b.id));
+  const b = batches.find((x) => x.id === batchAt(student, month, known)) || batches.find((x) => x.id === student.batch_id);
+  return b ? feeFor(b, month) : 0;
+}
+
+// The student row to save when they move to `batchId` from `from` (earlier months stay where they were).
+// `thisMonth` decides which batch counts as their current one.
+export function withBatchMove(student, batchId, from, thisMonth) {
+  const base = Array.isArray(student.batch_history) && student.batch_history.length ? student.batch_history : [{ from: '0000-00', batch_id: student.batch_id }];
+  const history = [...base.filter((e) => e.from < from), { from, batch_id: batchId }];
+  return { batch_id: batchAt({ batch_history: history, batch_id: batchId }, thisMonth), batch_history: history };
+}
+
 const sum = (rows) => rows.reduce((t, p) => t + p.amount, 0);
 
 // Where one student's month stands, given that month's payments (there may be several instalments).
@@ -57,11 +83,12 @@ function groupPayments(payments) {
 // Everything the Overview / Batch screens need for one month.
 export function monthView(data, month) {
   const by = groupPayments(data.payments);
+  const known = new Set(data.batches.map((b) => b.id));
 
   const batches = data.batches.map((batch) => {
     const rows = [];
     for (const student of data.students) {
-      if (student.batch_id !== batch.id) continue;
+      if (batchAt(student, month, known) !== batch.id) continue;
       const list = by.get(`${student.id}|${month}`) || [];
       const enrolled = student.active && student.joined_month <= month;
       if (!enrolled && !list.length) continue;
@@ -112,6 +139,7 @@ export function monthView(data, month) {
 export function dueList(data, month) {
   const by = groupPayments(data.payments);
   const batchById = new Map(data.batches.map((b) => [b.id, b]));
+  const known = new Set(batchById.keys());
   const out = [];
 
   for (const student of data.students) {
@@ -122,10 +150,11 @@ export function dueList(data, month) {
     let amount = 0;
     let partial = false;
     for (const m of monthsBetween(student.joined_month, month)) {
-      const ms = monthStatus(by.get(`${student.id}|${m}`) || [], feeFor(batch, m));
+      const fee = feeFor(batchById.get(batchAt(student, m, known)) || batch, m);
+      const ms = monthStatus(by.get(`${student.id}|${m}`) || [], fee);
       if (ms.settled) continue;
       months.push(m);
-      amount += ms.status === 'part' ? ms.balance : feeFor(batch, m);
+      amount += ms.status === 'part' ? ms.balance : fee;
       if (ms.status === 'part') partial = true;
     }
     if (!months.length) continue;
