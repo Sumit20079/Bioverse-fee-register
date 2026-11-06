@@ -36,6 +36,14 @@ export function monthStatus(rows, fee) {
   };
 }
 
+// A "settled" flag set because instalments reached the fee goes stale when an instalment is later edited or
+// removed. Given the month's rows before and after such a change, returns the rows that must be un-settled:
+// the month was full by payments before, and is short now. (A waiver leaves the month short already, so it stays.)
+export function staleSettled(before, after, fee) {
+  if (sum(before) < fee || sum(after) >= fee) return [];
+  return after.filter((r) => r.settled !== false);
+}
+
 function groupPayments(payments) {
   const by = new Map();
   for (const p of payments) {

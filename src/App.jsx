@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { backend, exitGuest, isDemo, isGuest, supabase } from './lib/db';
 import { currentMonth, longDateLabel, monthLabel, monthsBetween, todayISO } from './lib/dates';
-import { dueList, feeFor, monthView, withFeeChange } from './lib/calc';
+import { dueList, feeFor, monthView, staleSettled, withFeeChange } from './lib/calc';
 import { download, receiptContact, receiptText, waLink } from './lib/format';
 import Login from './components/Login';
 import Overview from './components/Overview';
@@ -365,7 +365,15 @@ function Register() {
             buzz();
             showPayment(p);
             closePay();
-            const others = (byMonth.get(p.month) || []).filter((x) => x.id !== p.id).reduce((t, x) => t + x.amount, 0);
+            const before = byMonth.get(p.month) || [];
+            const after = p.id ? before.map((x) => (x.id === p.id ? { ...x, ...p } : x)) : [...before, p];
+            // editing an earlier instalment can leave the others flagged "settled" although the month is now short
+            const stale = p.id ? staleSettled(before, after, feeFor(batch, p.month)).filter((x) => x.id !== p.id) : [];
+            for (const x of stale) {
+              showPayment({ ...x, settled: false });
+              act(() => backend.savePayment({ ...x, settled: false }));
+            }
+            const others = before.filter((x) => x.id !== p.id).reduce((t, x) => t + x.amount, 0);
             const balance = p.settled ? 0 : Math.max(0, feeFor(batch, p.month) - others - p.amount);
             act(() => backend.savePayment(p)).then((ok) => {
               if (ok) flash('Payment saved', receiptAction(student, batch, p, balance));
@@ -373,9 +381,14 @@ function Register() {
             return Promise.resolve(true);
           }}
           onRemove={(ids, m) => {
-            const all = (byMonth.get(m) || []).every((x) => ids.includes(x.id));
+            const before = byMonth.get(m) || [];
+            const all = before.every((x) => ids.includes(x.id));
+            const after = before.filter((x) => !ids.includes(x.id));
+            const stale = staleSettled(before, after, feeFor(batch, m));
             hidePayments(ids);
+            for (const x of stale) showPayment({ ...x, settled: false });
             closePay();
+            for (const x of stale) act(() => backend.savePayment({ ...x, settled: false }));
             act(() => backend.removePayments(ids), all ? 'Marked as unpaid' : 'Payment removed');
             return Promise.resolve(true);
           }}
