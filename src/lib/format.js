@@ -90,3 +90,14 @@ export function download(filename, text, mime = 'text/csv;charset=utf-8') {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
+
+// A reminder written by the teacher: {name} {amount} {months} {batch} are filled in. Used by the app (preview) and the server.
+export const DEFAULT_REMINDER =
+  'Hello, a gentle reminder that the tuition fee of {amount} for {name} ({batch}) for {months} is still pending. Please pay when you can. Thank you!';
+export function fillTemplate(template, { name, amount, monthsLabel, batchName }) {
+  return (template || DEFAULT_REMINDER)
+    .replaceAll('{name}', name)
+    .replaceAll('{amount}', rupees(amount))
+    .replaceAll('{months}', monthsLabel)
+    .replaceAll('{batch}', batchName);
+}

@@ -1,4 +1,4 @@
-import { monthsBetween } from './dates';
+import { monthsBetween } from './dates.js';
 
 // A batch's fee for a given month. `fee_history` lists the changes ({from:'YYYY-MM', fee}, oldest first);
 // the first entry is the original fee and applies to every earlier month. Without history, the batch fee applies always.

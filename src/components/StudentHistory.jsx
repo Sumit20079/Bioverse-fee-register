@@ -2,10 +2,34 @@ import Sheet from './Sheet';
 import { Icon } from './Icons';
 import { currentMonth, dateLabel, monthLabel, monthsBetween } from '../lib/dates';
 import { feeOn, monthStatus } from '../lib/calc';
-import { contactsOf, rupees, telLink, waLink } from '../lib/format';
+import { contactsOf, receiptContact, rupees, telLink, waLink } from '../lib/format';
+import { tgLink } from '../lib/telegram';
+
+// Telegram: says whether a parent is connected, or sends them their personal link (on WhatsApp, or copied).
+function TelegramRow({ student, count }) {
+  const link = tgLink(student);
+  const to = receiptContact(student);
+  const text = `Hello! To get tuition fee reminders for ${student.name} on Telegram, open this link and press Start: ${link}`;
+  const wa = to ? waLink(to.phone, text) : null;
+  const copy = () => navigator.clipboard?.writeText(link).catch(() => {});
+  return (
+    <div className="tgrow">
+      <div className="t">
+        <b>Telegram</b>
+        <small>{count ? `${count} parent${count === 1 ? '' : 's'} connected` : 'No parent connected yet'}</small>
+      </div>
+      {wa ? (
+        <a className="sbtn" href={wa} target="_blank" rel="noreferrer">
+          <Icon.Chat width={16} height={16} /> {count ? 'Invite another' : 'Invite'}
+        </a>
+      ) : null}
+      <button className="sbtn" onClick={copy}>Copy link</button>
+    </div>
+  );
+}
 
 // Every month for one student, newest first. Tap a month to record or edit its payment.
-export default function StudentHistory({ student, batch, batches, payments, onPay, onEdit, onClose }) {
+export default function StudentHistory({ student, batch, batches, payments, tg, onPay, onEdit, onClose }) {
   const byMonth = new Map();
   for (const p of payments) byMonth.set(p.month, [...(byMonth.get(p.month) || []), p]);
   const months = new Set(monthsBetween(student.joined_month, currentMonth()));
@@ -39,6 +63,8 @@ export default function StudentHistory({ student, batch, batches, payments, onPa
           ))}
         </div>
       )}
+
+      {tg && tgLink(student) && <TelegramRow student={student} count={tg.count} />}
 
       <div className="list" style={{ margin: 0 }}>
         {list.map((m) => {

@@ -1,0 +1,52 @@
+// Telegram calls this when a parent messages the bot. "/start <code>" connects that parent to a student.
+import { config, db, ok, sendTelegram } from './_lib.js';
+
+const HELP =
+  'Hello! This bot sends tuition fee reminders. To connect, open the personal link your teacher sent you and press Start. ' +
+  'Send /stop any time to stop the reminders.';
+
+export default async function handler(req, res) {
+  const cfg = config();
+
+  // One-time setup: open /api/telegram?setup=<CRON_SECRET> in a browser to point Telegram at this function.
+  if (req.method === 'GET') {
+    if (!cfg.cronSecret || req.query.setup !== cfg.cronSecret) return ok(res, { error: 'Not allowed' }, 401);
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    const r = await fetch(`https://api.telegram.org/bot${cfg.botToken}/setWebhook`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ url: `https://${host}/api/telegram`, secret_token: cfg.webhookSecret, allowed_updates: ['message'] }),
+    });
+    return ok(res, await r.json());
+  }
+
+  if (!cfg.webhookSecret || req.headers['x-telegram-bot-api-secret-token'] !== cfg.webhookSecret) return ok(res, { error: 'Not allowed' }, 401);
+  try {
+    const msg = req.body?.message;
+    if (!msg?.text) return ok(res);
+    const chatId = msg.chat.id;
+    const text = msg.text.trim();
+    const who = [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(' ');
+
+    if (/^\/stop\b/i.test(text)) {
+      await db('DELETE', `parent_chats?chat_id=eq.${chatId}`);
+      await sendTelegram(chatId, 'Okay, you will not get fee reminders any more. Open your teacher\'s link again any time to reconnect.');
+      return ok(res);
+    }
+    const m = text.match(/^\/start(?:\s+(\w+))?/i);
+    if (m && m[1]) {
+      const [student] = await db('GET', `students?select=id,name,owner_id&tg_token=eq.${m[1]}&deleted_at=is.null`);
+      if (!student) {
+        await sendTelegram(chatId, 'This link is not valid any more. Please ask your teacher for a new one.');
+        return ok(res);
+      }
+      await db('POST', 'parent_chats?on_conflict=student_id,chat_id', { owner_id: student.owner_id, student_id: student.id, chat_id: chatId, chat_name: who }, { prefer: 'resolution=merge-duplicates,return=minimal' });
+      await sendTelegram(chatId, `Connected. You will get tuition fee reminders for ${student.name} here. Send /stop to stop them.`);
+      return ok(res);
+    }
+    await sendTelegram(chatId, HELP);
+  } catch {
+    /* always answer 200 so Telegram doesn't retry the same message forever */
+  }
+  return ok(res);
+}

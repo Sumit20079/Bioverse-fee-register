@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { backend, exitGuest, isDemo, isGuest, rememberSignedIn, signOutSafe, supabase, sync, wasSignedIn } from './lib/db';
 import SyncPill from './components/SyncPill';
+import RemindersSheet from './components/RemindersSheet';
+import { loadLinked } from './lib/telegram';
 import { currentMonth, longDateLabel, monthLabel, monthsBetween, todayISO } from './lib/dates';
 import { dueList, feeOn, monthView, staleSettled, withBatchMove, withFeeChange } from './lib/calc';
 import { download, receiptContact, receiptText, waLink } from './lib/format';
@@ -91,6 +93,12 @@ function Register() {
   const [data, setData] = useState(null);
   const [loadError, setLoadError] = useState('');
   const [net, setNet] = useState(() => (sync ? sync.snapshot() : null));
+  // students with a parent connected on Telegram (online only; empty in demo or before the tables exist)
+  const [tgLinked, setTgLinked] = useState(() => new Map());
+  const refreshLinked = useCallback(() => {
+    if (isDemo || !navigator.onLine) return;
+    loadLinked().then((r) => setTgLinked(r.linked)).catch(() => {});
+  }, []);
   useEffect(() => (sync ? sync.subscribe(setNet) : undefined), []);
   const [tab, setTab] = useState('overview');
   const [batchId, setBatchId] = useState(null);
@@ -149,6 +157,8 @@ function Register() {
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
+
+  useEffect(refreshLinked, [refreshLinked, tab, sheet?.type]);
 
   // swipe between the five main tabs on a phone
   const [appEl, setAppEl] = useState(null);
@@ -360,7 +370,7 @@ function Register() {
   } else if (tab === 'collected') {
     body = <Collected data={data} onOpen={(student, m) => openPay(student, m)} />;
   } else if (tab === 'due') {
-    body = <Due list={dues} batches={data.batches} month={month} setMonth={setMonth} onPay={openPay} />;
+    body = <Due list={dues} batches={data.batches} month={month} setMonth={setMonth} onPay={openPay} tg={tgLinked} />;
   } else if (detail) {
     body = (
       <BatchDetail
@@ -484,6 +494,7 @@ function Register() {
           batch={batch}
           batches={data.allBatches || data.batches}
           payments={data.payments.filter((p) => p.student_id === student.id)}
+          tg={isDemo || !student.tg_token ? null : { count: tgLinked.get(student.id) || 0 }}
           onPay={(s, m) => openPay(s, m, true)}
           onEdit={(s) => setSheet({ type: 'student', student: s })}
           onClose={close}
@@ -635,12 +646,15 @@ function Register() {
         onSignOut={signOutSafe}
         net={isDemo ? null : net}
         onSyncNow={syncNow}
+        onReminders={() => setSheet({ type: 'reminders', from: 'settings' })}
       />
     );
   } else if (sheet?.type === 'lock') {
     sheetEl = <LockSheet cfg={lockCfg} onChanged={() => setLockCfg(loadLock())} onClose={closeBack} />;
   } else if (sheet?.type === 'about') {
     sheetEl = <AboutSheet onClose={closeBack} />;
+  } else if (sheet?.type === 'reminders') {
+    sheetEl = <RemindersSheet onClose={closeBack} onChanged={refreshLinked} flash={flash} />;
   } else if (sheet?.type === 'appearance') {
     sheetEl = <AppearanceSheet look={look} onChange={changeLook} onClose={closeBack} />;
   } else if (sheet?.type === 'trash') {
