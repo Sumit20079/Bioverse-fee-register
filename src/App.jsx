@@ -100,23 +100,22 @@ function Register() {
   const lookRef = useRef(look);
   lookRef.current = look;
   useEffect(() => watchSystem(() => lookRef.current), []);
-  // Android/browser Back steps back through the app (close the sheet, leave the batch, return to Overview)
-  // and only leaves the app from the Overview. Each level the app is "in" has one history entry.
-  const nav = useRef({});
-  nav.current = { sheet, batchId, tab };
-  const depth = (tab !== 'overview' ? 1 : 0) + (batchId ? 1 : 0) + (sheet ? 1 : 0);
-  const pushed = useRef(0);
+  // Android/browser Back: from anywhere inside the app (a sheet, a batch, another tab) one press goes straight
+  // back to a clean Overview; only a press on the clean Overview leaves the app. While the app is "deep" it
+  // holds exactly one history entry, added when the person leaves the clean Overview (a tap, so browsers keep it).
+  const deep = tab !== 'overview' || !!batchId || !!sheet;
+  const pushed = useRef(false);
   const skipPop = useRef(0);
   useEffect(() => {
-    if (depth > pushed.current) {
-      while (pushed.current < depth) history.pushState({ fee: ++pushed.current }, '');
-    } else if (depth < pushed.current) {
-      const extra = pushed.current - depth; // closed from inside the app: drop the now-unused entries
-      pushed.current = depth;
+    if (deep && !pushed.current) {
+      pushed.current = true;
+      history.pushState({ fee: 1 }, '');
+    } else if (!deep && pushed.current) {
+      pushed.current = false; // got back to Overview from inside the app: drop the unused entry
       skipPop.current += 1;
-      history.go(-extra);
+      history.go(-1);
     }
-  }); // every render: Back may have used up an entry while the app is still one level deep
+  });
   useEffect(() => {
     const onPop = () => {
       if (skipPop.current) {
@@ -124,11 +123,10 @@ function Register() {
         return;
       }
       if (!pushed.current) return;
-      pushed.current -= 1;
-      const n = nav.current;
-      if (n.sheet) setSheet(n.sheet.from === 'settings' ? { type: 'settings' } : null);
-      else if (n.batchId) setBatchId(null);
-      else if (n.tab !== 'overview') setTab('overview');
+      pushed.current = false;
+      setSheet(null);
+      setBatchId(null);
+      setTab('overview');
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
