@@ -101,22 +101,23 @@ function Register() {
   lookRef.current = look;
   useEffect(() => watchSystem(() => lookRef.current), []);
   // Android/browser Back steps back one level at a time: a sub-page (Appearance...) -> Settings -> closed, a batch ->
-  // its tab, another tab -> Overview; only Back on a clean Overview leaves the app. Each level the app is "in" holds
-  // one history entry, added right when the person taps in (browsers drop entries added without a tap, so nothing
-  // is ever re-added after a Back).
+  // its tab, another tab -> Overview; only Back on a clean Overview leaves the app.
+  // Browsers (Chrome on Android) skip history entries that were added without a fresh tap, and an app can't tell. So
+  // the app only ever adds ONE entry, at the tap that leaves the clean Overview. Each Back that still leaves the app
+  // "deep" steps one level in the app and then returns to that entry with history.forward(), which has no such limit.
   const nav = useRef({});
   nav.current = { sheet, batchId, tab };
-  const depth = (tab !== 'overview' ? 1 : 0) + (batchId ? 1 : 0) + (sheet ? (sheet.from === 'settings' ? 2 : 1) : 0);
-  const pushed = useRef(0);
+  const deep = tab !== 'overview' || !!batchId || !!sheet;
+  const pushed = useRef(false);
   const skipPop = useRef(0);
   useEffect(() => {
-    if (depth > pushed.current) {
-      while (pushed.current < depth) history.pushState({ fee: ++pushed.current }, '');
-    } else if (depth < pushed.current) {
-      const extra = pushed.current - depth; // closed from inside the app: drop the now-unused entries
-      pushed.current = depth;
+    if (deep && !pushed.current) {
+      pushed.current = true;
+      history.pushState({ fee: 1 }, '');
+    } else if (!deep && pushed.current) {
+      pushed.current = false; // back at Overview from inside the app: drop the unused entry
       skipPop.current += 1;
-      history.go(-extra);
+      history.go(-1);
     }
   });
   useEffect(() => {
@@ -126,11 +127,24 @@ function Register() {
         return;
       }
       if (!pushed.current) return;
-      pushed.current -= 1;
       const n = nav.current;
-      if (n.sheet) setSheet(n.sheet.from === 'settings' ? { type: 'settings' } : null);
-      else if (n.batchId) setBatchId(null);
-      else if (n.tab !== 'overview') setTab('overview');
+      let stillDeep = true;
+      if (n.sheet) {
+        setSheet(n.sheet.from === 'settings' ? { type: 'settings' } : null);
+        stillDeep = n.sheet.from === 'settings' || n.tab !== 'overview' || !!n.batchId;
+      } else if (n.batchId) {
+        setBatchId(null);
+        stillDeep = n.tab !== 'overview';
+      } else {
+        setTab('overview');
+        stillDeep = false;
+      }
+      if (stillDeep) {
+        skipPop.current += 1;
+        history.forward(); // we are on the entry below ours: step back up onto it
+      } else {
+        pushed.current = false;
+      }
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
