@@ -100,6 +100,40 @@ function Register() {
   const lookRef = useRef(look);
   lookRef.current = look;
   useEffect(() => watchSystem(() => lookRef.current), []);
+  // Android/browser Back steps back through the app (close the sheet, leave the batch, return to Overview)
+  // and only leaves the app from the Overview. Each level the app is "in" has one history entry.
+  const nav = useRef({});
+  nav.current = { sheet, batchId, tab };
+  const depth = (tab !== 'overview' ? 1 : 0) + (batchId ? 1 : 0) + (sheet ? 1 : 0);
+  const pushed = useRef(0);
+  const skipPop = useRef(0);
+  useEffect(() => {
+    if (depth > pushed.current) {
+      while (pushed.current < depth) history.pushState({ fee: ++pushed.current }, '');
+    } else if (depth < pushed.current) {
+      const extra = pushed.current - depth; // closed from inside the app: drop the now-unused entries
+      pushed.current = depth;
+      skipPop.current += 1;
+      history.go(-extra);
+    }
+  }); // every render: Back may have used up an entry while the app is still one level deep
+  useEffect(() => {
+    const onPop = () => {
+      if (skipPop.current) {
+        skipPop.current -= 1;
+        return;
+      }
+      if (!pushed.current) return;
+      pushed.current -= 1;
+      const n = nav.current;
+      if (n.sheet) setSheet(n.sheet.from === 'settings' ? { type: 'settings' } : null);
+      else if (n.batchId) setBatchId(null);
+      else if (n.tab !== 'overview') setTab('overview');
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
   // swipe between the five main tabs on a phone
   const [appEl, setAppEl] = useState(null);
   const pageRef = useRef(null);
