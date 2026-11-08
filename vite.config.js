@@ -13,7 +13,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: false, // public/manifest.webmanifest is used as is
-      workbox: { globPatterns: ['**/*.{js,css,html,png,svg,webmanifest}'], navigateFallback: '/index.html', cleanupOutdatedCaches: true },
+      workbox: { globPatterns: ['**/*.{js,css,html,png,svg,webmanifest}'], navigateFallback: '/index.html', navigateFallbackDenylist: [/^\/api\//], cleanupOutdatedCaches: true },
     }),
   ],
   server: { host: true },
