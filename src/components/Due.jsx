@@ -7,7 +7,7 @@ import { contactsOf, reminderText, rupees, telLink, waLink } from '../lib/format
 import { useWide } from '../lib/useWide';
 import { useCountUp } from '../lib/useCountUp';
 
-export default function Due({ list, batches, month, setMonth, onPay, tg }) {
+export default function Due({ list, batches, month, setMonth, onPay, tg, claimed }) {
   const [batchId, setBatchId] = useState('all');
   const wide = useWide();
   const shown = useMemo(() => list.filter((d) => batchId === 'all' || d.batch.id === batchId), [list, batchId]);
@@ -124,6 +124,7 @@ export default function Due({ list, batches, month, setMonth, onPay, tg }) {
                 <tr key={it.d.student.id} className="rise" style={{ '--i': i }}>
                   <td>
                     <b>{it.d.student.name}</b>
+                    {claimed?.has(it.d.student.id) && <span className="tgbadge claim" style={{ marginLeft: 8 }}>Claims paid</span>}
                     {tg?.get(it.d.student.id) > 0 && <span className="tgbadge" style={{ marginLeft: 8 }}>On Telegram</span>}
                     <div className="muted small">
                       {it.contacts.length ? it.contacts.map((c) => `${c.role[0]}: ${c.phone}`).join(' · ') : 'No phone'}
@@ -146,6 +147,7 @@ export default function Due({ list, batches, month, setMonth, onPay, tg }) {
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 600 }}>{it.d.student.name}</div>
                   <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>{it.d.batch.name}</div>
+                  {claimed?.has(it.d.student.id) && <span className="tgbadge claim">Claims paid</span>}
                   {tg?.get(it.d.student.id) > 0 && <span className="tgbadge">On Telegram</span>}
                 </div>
                 <div className="amt">

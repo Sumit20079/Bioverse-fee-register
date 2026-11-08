@@ -2,7 +2,7 @@ import { Icon } from './Icons';
 import { useState } from 'react';
 import Sheet from './Sheet';
 
-export default function SettingsSheet({ onClose, onAppearance, onLock, lockCfg, onAbout, onBackup, onRestore, onTrash, trashCount, isDemo, isGuest, onExitDemo, onSignOut, net, onSyncNow, onReminders, onAnnounce, onMessages, unread }) {
+export default function SettingsSheet({ onClose, onAppearance, onLock, lockCfg, onAbout, onBackup, onRestore, onTrash, trashCount, isDemo, isGuest, onExitDemo, onSignOut, net, onSyncNow, onReminders, onAnnounce, onMessages, unread, onClaims, claims }) {
   const [armed, setArmed] = useState(false);
   const Row = ({ icon: Ico, title, sub, onClick, danger }) => (
     <button className={'setrow' + (danger ? ' danger' : '')} onClick={onClick}>
@@ -21,6 +21,7 @@ export default function SettingsSheet({ onClose, onAppearance, onLock, lockCfg, 
         <Row icon={Icon.Palette} title="Appearance" sub="Colours, dark mode, outlines" onClick={onAppearance} />
         {!isDemo && <Row icon={Icon.Chat} title="Telegram reminders" sub="Automatic fee reminders for parents" onClick={onReminders} />}
         {!isDemo && <Row icon={Icon.Chat} title="Announcement" sub="One message to connected parents or a batch" onClick={onAnnounce} />}
+        {!isDemo && <Row icon={Icon.Chat} title="Payment claims" sub={claims ? `${claims} to check` : 'Parents who say they have paid'} onClick={onClaims} />}
         {!isDemo && <Row icon={Icon.Chat} title="Parent messages" sub={unread ? `${unread} unread` : 'What parents type to the bot'} onClick={onMessages} />}
         <Row icon={Icon.Lock} title="App lock" sub={lockCfg ? 'On · asks for a PIN' : 'Off · ask for a PIN when the app opens'} onClick={onLock} />
       </div>

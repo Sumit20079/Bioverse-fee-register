@@ -77,3 +77,26 @@ export async function unreadCount() {
   const { count, error } = await supabase.from('parent_messages').select('id', { count: 'exact', head: true }).eq('direction', 'in').eq('read', false);
   return error ? 0 : count || 0;
 }
+
+// "I've paid" claims from parents
+export async function loadClaims() {
+  const { data, error } = await supabase.from('payment_claims').select('*').eq('status', 'open').order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+export async function claimedStudents() {
+  if (!supabase || (typeof navigator !== 'undefined' && navigator.onLine === false)) return new Set();
+  try {
+    return new Set((await loadClaims()).map((c) => c.student_id));
+  } catch {
+    return new Set();
+  }
+}
+export async function proofUrl(path) {
+  const { data, error } = await supabase.storage.from('payment-proofs').createSignedUrl(path, 3600);
+  if (error) throw error;
+  return data.signedUrl;
+}
+export async function finishClaim(id) {
+  await supabase.from('payment_claims').update({ status: 'done' }).eq('id', id);
+}

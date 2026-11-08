@@ -4,7 +4,8 @@ import SyncPill from './components/SyncPill';
 import RemindersSheet from './components/RemindersSheet';
 import AnnounceSheet from './components/AnnounceSheet';
 import MessagesSheet from './components/MessagesSheet';
-import { loadLinked, sendReceipt, unreadCount } from './lib/telegram';
+import ClaimsSheet from './components/ClaimsSheet';
+import { claimedStudents, finishClaim, loadLinked, sendReceipt, unreadCount } from './lib/telegram';
 import { currentMonth, longDateLabel, monthLabel, monthsBetween, todayISO } from './lib/dates';
 import { dueList, feeOn, monthView, staleSettled, withBatchMove, withFeeChange } from './lib/calc';
 import { download, receiptContact, receiptText, waLink } from './lib/format';
@@ -97,9 +98,11 @@ function Register() {
   const [net, setNet] = useState(() => (sync ? sync.snapshot() : null));
   // students with a parent connected on Telegram (online only; empty in demo or before the tables exist)
   const [tgLinked, setTgLinked] = useState(() => new Map());
+  const [claimed, setClaimed] = useState(() => new Set());
   const refreshLinked = useCallback(() => {
     if (isDemo || !navigator.onLine) return;
     loadLinked().then((r) => setTgLinked(r.linked)).catch(() => {});
+    claimedStudents().then(setClaimed);
   }, []);
   useEffect(() => (sync ? sync.subscribe(setNet) : undefined), []);
   const [tab, setTab] = useState('overview');
@@ -378,7 +381,7 @@ function Register() {
   } else if (tab === 'collected') {
     body = <Collected data={data} onOpen={(student, m) => openPay(student, m)} />;
   } else if (tab === 'due') {
-    body = <Due list={dues} batches={data.batches} month={month} setMonth={setMonth} onPay={openPay} tg={tgLinked} />;
+    body = <Due list={dues} batches={data.batches} month={month} setMonth={setMonth} onPay={openPay} tg={tgLinked} claimed={claimed} />;
   } else if (detail) {
     body = (
       <BatchDetail
@@ -474,6 +477,7 @@ function Register() {
             const balance = p.settled ? 0 : Math.max(0, feeOn(student, data.allBatches || data.batches, p.month) - others - p.amount);
             act(() => backend.savePayment(p)).then((ok) => {
               if (ok) flash('Payment saved', receiptAction(student, batch, p, balance));
+              if (ok && !isDemo && sheet.claimId) finishClaim(sheet.claimId).then(refreshLinked).catch(() => {});
               if (ok && !isDemo && p.amount > 0) sendReceipt({ student_id: student.id, amount: p.amount, month: p.month, balance, batch: batch.name, paid_on: longDateLabel(p.paid_on) });
             });
             return Promise.resolve(true);
@@ -658,6 +662,8 @@ function Register() {
         onReminders={() => setSheet({ type: 'reminders', from: 'settings' })}
         onAnnounce={() => setSheet({ type: 'announce', from: 'settings' })}
         onMessages={() => setSheet({ type: 'messages', from: 'settings' })}
+        onClaims={() => setSheet({ type: 'claims', from: 'settings' })}
+        claims={claimed.size}
         unread={unread}
       />
     );
@@ -665,6 +671,15 @@ function Register() {
     sheetEl = <LockSheet cfg={lockCfg} onChanged={() => setLockCfg(loadLock())} onClose={closeBack} />;
   } else if (sheet?.type === 'about') {
     sheetEl = <AboutSheet onClose={closeBack} />;
+  } else if (sheet?.type === 'claims') {
+    sheetEl = (
+      <ClaimsSheet
+        onClose={() => { closeBack(); refreshLinked(); }}
+        students={data.students}
+        flash={flash}
+        onRecord={(c, month) => setSheet({ type: 'pay', studentId: c.student_id, month: month || currentMonth(), claimId: c.id })}
+      />
+    );
   } else if (sheet?.type === 'announce') {
     sheetEl = <AnnounceSheet onClose={closeBack} batches={data.batches} students={data.students} flash={flash} />;
   } else if (sheet?.type === 'messages') {

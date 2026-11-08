@@ -1,7 +1,8 @@
 // Shared by the Telegram functions. Runs on Vercel, never in the browser.
 import { dueList, monthView } from '../src/lib/calc.js';
 import { addMonths, monthLabel, monthsText } from '../src/lib/dates.js';
-import { fillTemplate, receiptText, rupees } from '../src/lib/format.js';
+import { fillTemplate, rupees } from '../src/lib/format.js';
+import { keyboardFor, langOf, paidButton, T } from './_i18n.js';
 import { shape } from '../src/lib/shape.js';
 
 const env = (k) => process.env[k] || '';
@@ -99,10 +100,16 @@ export async function remindOwner(owner, settings, { now = false } = {}) {
       res.skipped += 1;
       continue;
     }
-    const text = fillTemplate(settings.message, { name: d.student.name, amount: d.amount, monthsLabel: monthsText(d.months), batchName: d.batch.name });
     res.students += 1;
     for (const c of mine) {
-      const r = await sendTelegram(c.chat_id, text);
+      const L = T(langOf(c));
+      // the teacher's own wording is sent as typed; otherwise the standard message in the parent's language
+      const text = settings.message
+        ? fillTemplate(settings.message, { name: d.student.name, amount: d.amount, monthsLabel: monthsText(d.months), batchName: d.batch.name })
+        : langOf(c) === 'bn'
+          ? L.reminder({ name: d.student.name, amt: rupees(d.amount), months: L.months(d.months), batch: d.batch.name })
+          : fillTemplate(settings.message, { name: d.student.name, amount: d.amount, monthsLabel: monthsText(d.months), batchName: d.batch.name });
+      const r = await sendTelegram(c.chat_id, text, paidButton(langOf(c), d.student.id));
       if (r.ok) res.sent += 1;
       else res.failed += 1;
       if (r.gone) await db('DELETE', `parent_chats?id=eq.${c.id}`); // blocked the bot: forget the link
@@ -121,21 +128,23 @@ export async function ownerFromToken(jwt) {
 }
 
 // Buttons shown under the chat box. Tapping one sends its text, which the webhook understands.
-export const KEYBOARD = { reply_markup: { keyboard: [[{ text: '📊 Status' }, { text: '🧾 History' }, { text: '🔕 Stop reminders' }]], resize_keyboard: true, is_persistent: true } };
+export const KEYBOARD = keyboardFor('en');
+export const keyboardForChat = (chat) => keyboardFor(langOf(chat));
 
 // "/status": what this child owes right now, and the last payment.
 export async function statusText(chat) {
+  const L = T(langOf(chat));
   const data = await loadData(chat.owner_id);
   const student = data.students.find((s) => s.id === chat.student_id);
-  if (!student) return 'Sorry, this student is not in the register any more.';
+  if (!student) return L.gone;
   const t = istNow();
   const row = dueList(data, t.month).find((d) => d.student.id === student.id);
   const mine = data.payments.filter((p) => p.student_id === student.id && p.amount > 0).sort((a, b) => (b.paid_on || '').localeCompare(a.paid_on || '') || b.month.localeCompare(a.month));
   const last = mine[0];
-  const lines = [`Fee status for ${student.name}`];
-  if (row) lines.push(`Pending: ${monthsText(row.months)} · ${rupees(row.amount)}${row.partial ? ' (includes a part payment balance)' : ''}`);
-  else lines.push(`All paid up till ${monthLabel(t.month)} ✅`);
-  if (last) lines.push(`Last payment: ${rupees(last.amount)} for ${monthLabel(last.month)}${last.paid_on ? ` on ${String(last.paid_on).slice(0, 10)}` : ''}`);
+  const lines = [L.statusTitle(student.name)];
+  if (row) lines.push(L.pending(L.months(row.months), rupees(row.amount), row.partial));
+  else lines.push(L.allPaid(L.month(t.month)));
+  if (last) lines.push(L.lastPay(rupees(last.amount), L.month(last.month), last.paid_on ? String(last.paid_on).slice(0, 10) : ''));
   return lines.join('\n');
 }
 
@@ -147,9 +156,10 @@ export async function sendReceipt(owner, studentId, { amount, month, balance = 0
   const [cfg] = await db('GET', `reminder_settings?select=receipts&owner_id=eq.${owner}`);
   if (cfg && cfg.receipts === false) return 0;
   const chats = await db('GET', `parent_chats?select=*&owner_id=eq.${owner}&student_id=eq.${studentId}`);
-  const text = receiptText({ name: st.name, amount, monthLabel: monthLabel(month), batchName, paidOn, balance, to: 'parent' });
   let sent = 0;
   for (const c of chats) {
+    const L = T(langOf(c));
+    const text = L.receipt({ name: st.name, amt: rupees(amount), month: L.month(month), batch: batchName, on: paidOn, balance });
     const r = await sendTelegram(c.chat_id, text);
     if (r.ok) sent += 1;
     if (r.gone) await db('DELETE', `parent_chats?id=eq.${c.id}`);
@@ -161,7 +171,8 @@ export async function sendReceipt(owner, studentId, { amount, month, balance = 0
 export async function historyText(chat) {
   const data = await loadData(chat.owner_id);
   const student = data.students.find((s) => s.id === chat.student_id);
-  if (!student) return 'Sorry, this student is not in the register any more.';
+  const L = T(langOf(chat));
+  if (!student) return L.gone;
   const by = new Map();
   for (const p of data.payments) {
     if (p.student_id !== student.id || !(p.amount > 0)) continue;
@@ -171,10 +182,10 @@ export async function historyText(chat) {
     by.set(p.month, e);
   }
   const months = [...by.keys()].sort().reverse();
-  if (!months.length) return `No payments recorded yet for ${student.name}.`;
+  if (!months.length) return L.histNone(student.name);
   const shown = months.slice(0, 12);
-  const lines = shown.map((m) => `• ${monthLabel(m)}: ${rupees(by.get(m).amount)}${by.get(m).on ? ` (paid ${by.get(m).on})` : ''}`);
-  return `Payment history for ${student.name}\n${lines.join('\n')}${months.length > shown.length ? `\n…and ${months.length - shown.length} earlier months` : ''}`;
+  const lines = shown.map((m) => `• ${L.month(m)}: ${rupees(by.get(m).amount)}${by.get(m).on ? L.histPaid(by.get(m).on) : ''}`);
+  return `${L.histTitle(student.name)}\n${lines.join('\n')}${months.length > shown.length ? L.histMore(months.length - shown.length) : ''}`;
 }
 
 // A gentle heads-up a few days BEFORE the reminder day, only for students whose only unpaid month is this one.
@@ -187,7 +198,8 @@ export async function headsUpOwner(owner, settings) {
   for (const d of dueList(data, t.month)) {
     if (d.months.length !== 1 || d.months[0] !== t.month) continue;
     for (const c of chats.filter((x) => x.student_id === d.student.id)) {
-      const text = `Hello, a gentle heads-up: the tuition fee for ${d.student.name} (${d.batch.name}) for ${monthLabel(t.month)} (${rupees(d.amount)}) falls due on day ${settings.day}. Please ignore this if you have already paid. Thank you!`;
+      const L = T(langOf(c));
+      const text = L.headsUp({ name: d.student.name, batch: d.batch.name, month: L.month(t.month), amt: rupees(d.amount), day: settings.day });
       const r = await sendTelegram(c.chat_id, text);
       if (r.ok) sent += 1;
       if (r.gone) await db('DELETE', `parent_chats?id=eq.${c.id}`);
@@ -252,4 +264,46 @@ export async function saveParentMessage(chatLinks, text, who) {
     const [st] = await db('GET', `students?select=name&id=eq.${first.student_id}`);
     await sendTelegram(cfg.teacher_chat_id, `💬 ${who || 'A parent'}${st ? ` (${st.name})` : ''}:\n${body}\n\nReply from the app: Settings → Parent messages.`);
   }
+}
+
+// ---- "I've paid" claims and screenshots ----
+export async function tg(method, body) {
+  const { botToken } = config();
+  const r = await fetch(`https://api.telegram.org/bot${botToken}/${method}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  return r.json().catch(() => ({}));
+}
+
+// A parent says they paid. Keeps one open claim per student/chat per day. Returns the claim, or null when nothing is pending.
+export async function createClaim(link, who) {
+  const data = await loadData(link.owner_id);
+  const row = dueList(data, istNow().month).find((d) => d.student.id === link.student_id);
+  if (!row) return { claim: null, row: null, fresh: false };
+  const since = new Date(Date.now() - 24 * 3600e3).toISOString();
+  const [open] = await db('GET', `payment_claims?select=*&owner_id=eq.${link.owner_id}&student_id=eq.${link.student_id}&chat_id=eq.${link.chat_id}&status=eq.open&created_at=gte.${since}`);
+  if (open) return { claim: open, row, fresh: false };
+  const [claim] = await db('POST', 'payment_claims', { owner_id: link.owner_id, student_id: link.student_id, chat_id: link.chat_id, chat_name: who || link.chat_name || '', months: row.months.join(','), amount: row.amount });
+  const [cfg] = await db('GET', `reminder_settings?select=teacher_chat_id&owner_id=eq.${link.owner_id}`);
+  if (cfg?.teacher_chat_id) await sendTelegram(cfg.teacher_chat_id, `💰 ${who || 'A parent'} says ${row.student.name} has paid ${monthsText(row.months)} · ${rupees(row.amount)}.\nCheck it and record it: Settings → Payment claims.`);
+  return { claim, row, fresh: true };
+}
+
+// Saves a payment screenshot the parent sent into private storage and links it to the claim.
+export async function saveProof(claim, fileId) {
+  const { supaUrl, serviceKey, botToken } = config();
+  const f = await tg('getFile', { file_id: fileId });
+  if (!f.ok || !f.result?.file_path) return false;
+  const img = await fetch(`https://api.telegram.org/file/bot${botToken}/${f.result.file_path}`);
+  if (!img.ok) return false;
+  const buf = Buffer.from(await img.arrayBuffer());
+  if (buf.length > 8 * 1024 * 1024) return false;
+  const ext = (f.result.file_path.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'jpg';
+  const path = `${claim.owner_id}/${claim.id}.${ext}`;
+  const up = await fetch(`${supaUrl}/storage/v1/object/payment-proofs/${path}`, {
+    method: 'POST',
+    headers: { apikey: serviceKey, authorization: `Bearer ${serviceKey}`, 'content-type': ext === 'png' ? 'image/png' : 'image/jpeg', 'x-upsert': 'true' },
+    body: buf,
+  });
+  if (!up.ok) return false;
+  await db('PATCH', `payment_claims?id=eq.${claim.id}`, { proof_path: path });
+  return true;
 }

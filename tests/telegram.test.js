@@ -37,6 +37,7 @@ function world() {
   const month = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 7);
   const w = {
     sent: [],
+    uploads: [],
     tables: {
       batches: [{ id: 'b1', owner_id: 'o1', name: 'Class 10', fee: 800, created_at: '1' }],
       students: [
@@ -52,6 +53,7 @@ function world() {
       reminder_log: [],
       reminder_settings: [],
       parent_messages: [],
+      payment_claims: [],
     },
     blocked: new Set(),
   };
@@ -71,11 +73,18 @@ function world() {
   });
   vi.stubGlobal('fetch', async (url, init = {}) => {
     const json = (b, status = 200) => ({ ok: status < 400, status, text: async () => JSON.stringify(b), json: async () => b });
+    if (url.startsWith('https://api.telegram.org/file/')) return { ok: true, status: 200, arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer };
+    if (url.includes('/storage/v1/object/')) {
+      w.uploads.push(url.split('/storage/v1/object/')[1]);
+      return json({ Key: 'x' });
+    }
     if (url.startsWith('https://api.telegram.org')) {
       const body = JSON.parse(init.body);
+      if (url.endsWith('/getFile')) return json({ ok: true, result: { file_path: 'photos/p1.jpg' } });
+      if (url.endsWith('/answerCallbackQuery')) { w.answered = (w.answered || 0) + 1; return json({ ok: true }); }
       if (url.endsWith('/sendMessage')) {
         if (w.blocked.has(body.chat_id)) return json({ ok: false, error_code: 403, description: 'Forbidden: bot was blocked by the user' }, 403);
-        w.sent.push({ chat: body.chat_id, text: body.text });
+        w.sent.push({ chat: body.chat_id, text: body.text, markup: body.reply_markup });
         return json({ ok: true });
       }
       return json({ ok: true, result: true });
@@ -85,7 +94,7 @@ function world() {
     const t = w.tables[table];
     if (init.method === 'GET') return json(t.filter((r) => match(r, f)));
     if (init.method === 'POST') {
-      const row = { id: `${table}-${t.length + 1}`, sent_at: new Date().toISOString(), ...JSON.parse(init.body) }; // the database fills in id and sent_at
+      const row = { id: `${table}-${t.length + 1}`, sent_at: new Date().toISOString(), ...(table === 'payment_claims' ? { status: 'open' } : {}), ...JSON.parse(init.body) }; // the database fills in id, sent_at and defaults
       const dup = table === 'parent_chats' && t.find((x) => x.student_id === row.student_id && x.chat_id === row.chat_id);
       if (!dup) t.push(row);
       return json([row]);
@@ -179,7 +188,7 @@ describe('the Telegram webhook', () => {
     const w = world();
     await hit(w, '/start tok2');
     expect(w.tables.parent_chats.find((c) => c.chat_id === 777)).toMatchObject({ student_id: 's2', owner_id: 'o1' });
-    expect(w.sent.at(-1).text).toMatch(/Connected.*Bimal/);
+    expect(w.sent.find((m) => /Connected/.test(m.text)).text).toMatch(/Connected.*Bimal/);
   });
   it('connecting twice does not duplicate', async () => {
     const w = world();
@@ -400,5 +409,100 @@ describe('round 2: announcements and parent messages', () => {
     const bad = await call(reply, { chat_id: 555, student_id: 's1', text: 'sneaky' });
     expect(bad.code).toBe(400);
     expect((await call(reply, { chat_id: 111, student_id: 's1', text: 'x' }, 'nobody')).code).toBe(401);
+  });
+});
+
+describe('round 3: Bengali and "I\'ve paid"', () => {
+  const say = (message, extra = {}) => {
+    const r = res();
+    return handler({ method: 'POST', headers: { 'x-telegram-bot-api-secret-token': 'whsec' }, body: { message: { chat: { id: 0 }, from: { first_name: 'Mrs Paul' }, ...message, ...extra } } }, r);
+  };
+  const tap = (data, chat) => {
+    const r = res();
+    return handler({ method: 'POST', headers: { 'x-telegram-bot-api-secret-token': 'whsec' }, body: { callback_query: { id: 'cb1', data, from: { first_name: 'Mrs Paul' }, message: { chat: { id: chat } } } } }, r);
+  };
+
+  it('after Start the parent is offered a language', async () => {
+    const w = world();
+    await say({ text: '/start tok2', chat: { id: 777 } });
+    const last = w.sent.at(-1);
+    expect(last.text).toMatch(/Choose your language/);
+    expect(JSON.stringify(last.markup)).toMatch(/lang:bn/);
+  });
+  it('choosing Bengali switches everything the bot says', async () => {
+    const w = world();
+    await tap('lang:bn', 111);
+    expect(w.tables.parent_chats.find((c) => c.chat_id === 111).lang).toBe('bn');
+    expect(w.sent.at(-1).text).toBe('ভাষা বাংলা করা হয়েছে।');
+    await say({ text: '/status', chat: { id: 111 } });
+    expect(w.sent.at(-1).text).toMatch(/Asha-এর ফি-এর অবস্থা[\s\S]*বাকি:/);
+    await say({ text: '/history', chat: { id: 111 } });
+    expect(w.sent.at(-1).text).toMatch(/কোনো পেমেন্ট এখনও লেখা হয়নি/);
+  });
+  it('reminders, receipts and heads-ups follow the parent\'s language', async () => {
+    const w = world();
+    w.tables.parent_chats.find((c) => c.chat_id === 111).lang = 'bn';
+    await remindOwner('o1', { mode: 'manual', day: 28, every_days: 3, message: null }, { now: true });
+    expect(w.sent.at(-1).text).toMatch(/নমস্কার, Asha-এর \(Class 10\).*₹800 এখনও বাকি/);
+    expect(JSON.stringify(w.sent.at(-1).markup)).toMatch(/paid:s1/);
+    const month = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 7);
+    await receipt({ method: 'POST', headers: { authorization: 'Bearer teacher-jwt' }, body: { student_id: 's1', amount: 800, month, batch: 'Class 10' } }, res());
+    expect(w.sent.at(-1).text).toMatch(/টিউশন ফি ₹800 গ্রহণ করা হয়েছে/);
+  });
+  it('a teacher\'s own wording is sent as typed, whatever the language', async () => {
+    const w = world();
+    w.tables.parent_chats.find((c) => c.chat_id === 111).lang = 'bn';
+    await remindOwner('o1', { mode: 'manual', day: 28, every_days: 3, message: 'Fee {amount} for {name}' }, { now: true });
+    expect(w.sent.at(-1).text).toBe('Fee ₹800 for Asha');
+  });
+  it('English parents still get the English reminder, now with an I\'ve paid button', async () => {
+    const w = world();
+    await remindOwner('o1', { mode: 'manual', day: 28, every_days: 3, message: null }, { now: true });
+    expect(w.sent[0].text).toMatch(/gentle reminder.*₹800.*Asha/);
+    expect(JSON.stringify(w.sent[0].markup)).toMatch(/I've paid/);
+  });
+  it('"I\'ve paid" makes one claim and tells the teacher', async () => {
+    const w = world();
+    w.tables.reminder_settings.push({ owner_id: 'o1', teacher_chat_id: 900 });
+    await tap('paid:s1', 111);
+    expect(w.tables.payment_claims).toHaveLength(1);
+    expect(w.tables.payment_claims[0]).toMatchObject({ student_id: 's1', amount: 800, status: 'open' });
+    expect(w.sent.find((m) => m.chat === 900).text).toMatch(/Asha has paid.*₹800/);
+    expect(w.sent.find((m) => m.chat === 111).text).toMatch(/teacher has been told/);
+    await tap('paid:s1', 111); // pressing again does not pile up claims
+    expect(w.tables.payment_claims).toHaveLength(1);
+  });
+  it('someone paid up gets told nothing is pending, and no claim', async () => {
+    const w = world();
+    await tap('paid:s3', 333);
+    expect(w.tables.payment_claims).toHaveLength(0);
+    expect(w.sent.at(-1).text).toMatch(/Nothing is pending/);
+  });
+  it('a button for a student that is not yours does nothing', async () => {
+    const w = world();
+    await tap('paid:s2', 111);
+    expect(w.tables.payment_claims).toHaveLength(0);
+  });
+  it('a screenshot is stored privately and attached to the claim', async () => {
+    const w = world();
+    await say({ photo: [{ file_id: 'small' }, { file_id: 'big' }], chat: { id: 111 } });
+    expect(w.tables.payment_claims).toHaveLength(1);
+    expect(w.uploads).toHaveLength(1);
+    expect(w.uploads[0]).toMatch(/^payment-proofs\/o1\/.+\.jpg$/);
+    expect(w.tables.payment_claims[0].proof_path).toMatch(/^o1\/.+\.jpg$/);
+    expect(w.sent.at(-1).text).toMatch(/Got the screenshot/);
+  });
+  it('a screenshot after the button goes onto the same claim', async () => {
+    const w = world();
+    await tap('paid:s1', 111);
+    await say({ photo: [{ file_id: 'x' }], chat: { id: 111 } });
+    expect(w.tables.payment_claims).toHaveLength(1);
+    expect(w.tables.payment_claims[0].proof_path).toBeTruthy();
+  });
+  it('a screenshot from a stranger is ignored politely', async () => {
+    const w = world();
+    await say({ photo: [{ file_id: 'x' }], chat: { id: 999 } });
+    expect(w.tables.payment_claims).toHaveLength(0);
+    expect(w.uploads).toHaveLength(0);
   });
 });

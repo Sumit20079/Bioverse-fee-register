@@ -671,3 +671,4 @@ input.bright::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; 
 .bubble small { display: block; opacity: .6; font-size: 11px; margin-top: 2px; }
 .bubble.them { background: rgba(127,127,127,.14); }
 .bubble.me { background: var(--accent-soft, rgba(31,111,178,.18)); margin-left: auto; }
+.tgbadge.claim { background: #fde7c8; color: #7a4a00; }
