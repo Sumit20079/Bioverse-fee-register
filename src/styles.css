@@ -659,3 +659,15 @@ input.bright::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; 
 .tgrow .t b { display: block; font-size: 14px; }
 .tgrow .t small { color: var(--muted); font-size: 12.5px; }
 .tgbadge { display: inline-block; margin-top: 3px; padding: 1px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 700; background: var(--primary-tint); color: var(--primary-ink); }
+
+/* ---------- parent messages ---------- */
+.thread { border: 1px solid var(--outline, rgba(0,0,0,.12)); border-radius: 14px; margin-bottom: 8px; overflow: hidden; }
+.thread-head { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; background: transparent; border: 0; text-align: left; cursor: pointer; }
+.thread-head small { display: block; opacity: .7; }
+.thread-head .thread-last { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 62vw; }
+.thread-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent, #1F6FB2); flex: none; }
+.thread-body { padding: 4px 14px 14px; }
+.bubble { padding: 8px 12px; border-radius: 14px; margin: 6px 0; max-width: 86%; white-space: pre-wrap; word-break: break-word; }
+.bubble small { display: block; opacity: .6; font-size: 11px; margin-top: 2px; }
+.bubble.them { background: rgba(127,127,127,.14); }
+.bubble.me { background: var(--accent-soft, rgba(31,111,178,.18)); margin-left: auto; }

@@ -1,5 +1,5 @@
 // Telegram calls this when a parent messages the bot. "/start <code>" connects that parent to a student.
-import { config, db, historyText, KEYBOARD, ok, sendTelegram, statusText } from './_lib.js';
+import { config, db, historyText, KEYBOARD, ok, saveParentMessage, sendTelegram, statusText } from './_lib.js';
 
 const HELP =
   'Hello! This bot sends tuition fee reminders. To connect, open the personal link your teacher sent you and press Start. ' +
@@ -79,6 +79,14 @@ export default async function handler(req, res) {
       if (cfgRow?.teacher_chat_id && cfgRow.notify_connect !== false) await sendTelegram(cfgRow.teacher_chat_id, `${who || 'A parent'} connected on Telegram for ${student.name}.`);
       await sendTelegram(chatId, `Connected. You will get tuition fee reminders for ${student.name} here. Send /status any time to see the fee status, or /stop to stop reminders.`, KEYBOARD);
       return ok(res);
+    }
+    if (!text.startsWith('/')) {
+      const links = await db('GET', `parent_chats?select=*&chat_id=eq.${chatId}`);
+      if (links.length) {
+        await saveParentMessage(links, text, who);
+        await sendTelegram(chatId, 'Thank you, your message has been passed to the teacher.', KEYBOARD);
+        return ok(res);
+      }
     }
     await sendTelegram(chatId, HELP);
   } catch {

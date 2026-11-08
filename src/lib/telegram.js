@@ -52,3 +52,28 @@ export async function sendReceipt(payload) {
     return 0;
   }
 }
+
+async function post(path, body) {
+  const { data } = await supabase.auth.getSession();
+  const r = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${data.session?.access_token}` }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || `Server said ${r.status}`);
+  return j;
+}
+export const sendAnnouncement = (text, batchId) => post('/api/announce', { text, batch_id: batchId || null });
+export const sendReply = (m, text) => post('/api/reply', { chat_id: m.chat_id, student_id: m.student_id, text });
+
+export async function loadMessages() {
+  const { data, error } = await supabase.from('parent_messages').select('*').order('created_at', { ascending: false }).limit(300);
+  if (error) throw error;
+  return data;
+}
+export async function markRead(ids) {
+  if (!ids.length) return;
+  await supabase.from('parent_messages').update({ read: true }).in('id', ids);
+}
+export async function unreadCount() {
+  if (!supabase) return 0;
+  const { count, error } = await supabase.from('parent_messages').select('id', { count: 'exact', head: true }).eq('direction', 'in').eq('read', false);
+  return error ? 0 : count || 0;
+}

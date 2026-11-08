@@ -209,3 +209,47 @@ export async function summaryOwner(owner, settings) {
   const r = await sendTelegram(settings.teacher_chat_id, lines.join('\n'));
   return { sent: r.ok ? 1 : 0 };
 }
+
+// One announcement to every connected parent (all students, or one batch). A parent linked to two kids gets it once.
+export async function announceOwner(owner, { text, batchId = null }) {
+  const clean = String(text || '').trim().slice(0, 3000);
+  if (!clean) return { sent: 0, failed: 0 };
+  const students = await db('GET', `students?select=id&owner_id=eq.${owner}&deleted_at=is.null&active=eq.true${batchId ? `&batch_id=eq.${batchId}` : ''}`);
+  const ids = new Set(students.map((s) => s.id));
+  const chats = await db('GET', `parent_chats?select=*&owner_id=eq.${owner}`);
+  const seen = new Set();
+  const out = { sent: 0, failed: 0 };
+  for (const c of chats) {
+    if (!ids.has(c.student_id) || seen.has(c.chat_id)) continue;
+    seen.add(c.chat_id);
+    const r = await sendTelegram(c.chat_id, `📢 ${clean}`);
+    if (r.ok) out.sent += 1;
+    else out.failed += 1;
+    if (r.gone) await db('DELETE', `parent_chats?chat_id=eq.${c.chat_id}&owner_id=eq.${owner}`);
+  }
+  return out;
+}
+
+// The teacher answers a parent from the app.
+export async function replyOwner(owner, { chatId, studentId, text }) {
+  const clean = String(text || '').trim().slice(0, 3000);
+  if (!clean) return { sent: false };
+  const [link] = await db('GET', `parent_chats?select=*&owner_id=eq.${owner}&chat_id=eq.${Number(chatId)}&student_id=eq.${studentId}`);
+  if (!link) return { sent: false, error: 'This parent is not connected any more' };
+  const r = await sendTelegram(link.chat_id, `💬 Message from your teacher:\n${clean}`);
+  if (!r.ok) return { sent: false, error: r.detail || 'Telegram refused it' };
+  await db('POST', 'parent_messages', { owner_id: owner, student_id: link.student_id, chat_id: link.chat_id, chat_name: link.chat_name, direction: 'out', body: clean, read: true }, { prefer: 'return=minimal' });
+  return { sent: true };
+}
+
+// A parent typed something to the bot: keep it for the teacher and ping their Telegram if connected.
+export async function saveParentMessage(chatLinks, text, who) {
+  const body = String(text).slice(0, 3000);
+  const first = chatLinks[0];
+  await db('POST', 'parent_messages', { owner_id: first.owner_id, student_id: first.student_id, chat_id: first.chat_id, chat_name: who || first.chat_name || '', direction: 'in', body }, { prefer: 'return=minimal' });
+  const [cfg] = await db('GET', `reminder_settings?select=teacher_chat_id&owner_id=eq.${first.owner_id}`);
+  if (cfg?.teacher_chat_id) {
+    const [st] = await db('GET', `students?select=name&id=eq.${first.student_id}`);
+    await sendTelegram(cfg.teacher_chat_id, `💬 ${who || 'A parent'}${st ? ` (${st.name})` : ''}:\n${body}\n\nReply from the app: Settings → Parent messages.`);
+  }
+}

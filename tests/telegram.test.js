@@ -3,6 +3,8 @@ import { dueToday, headsUpOwner, remindOwner, summaryOwner } from '../api/_lib.j
 import handler from '../api/telegram.js';
 import remind from '../api/remind.js';
 import receipt from '../api/receipt.js';
+import announce from '../api/announce.js';
+import reply from '../api/reply.js';
 
 const T = (date) => ({ today: date, day: Number(date.slice(8)) });
 
@@ -49,6 +51,7 @@ function world() {
       ],
       reminder_log: [],
       reminder_settings: [],
+      parent_messages: [],
     },
     blocked: new Set(),
   };
@@ -331,5 +334,71 @@ describe('round 1 extras', () => {
     await remind({ headers: { authorization: 'Bearer cron' } }, r);
     expect(r.code).toBe(200);
     expect(r.body.teachers).toBe(1);
+  });
+});
+
+describe('round 2: announcements and parent messages', () => {
+  const call = (fn, body, jwt = 'teacher-jwt') => {
+    const r = res();
+    return fn({ method: 'POST', headers: { authorization: `Bearer ${jwt}` }, body }, r).then(() => r);
+  };
+  const talk = (text, chat, from = 'Mrs Paul') => {
+    const r = res();
+    return handler({ method: 'POST', headers: { 'x-telegram-bot-api-secret-token': 'whsec' }, body: { message: { text, chat: { id: chat }, from: { first_name: from } } } }, r);
+  };
+
+  it('an announcement reaches every connected parent', async () => {
+    const w = world();
+    const r = await call(announce, { text: 'No class on Saturday' });
+    expect(r.body).toMatchObject({ sent: 2, failed: 0 });
+    expect(w.sent.map((m) => m.chat).sort()).toEqual([111, 333]);
+    expect(w.sent[0].text).toBe('📢 No class on Saturday');
+  });
+  it('one batch only', async () => {
+    const w = world();
+    w.tables.batches.push({ id: 'batch-two', owner_id: 'o1', name: 'Class 9', fee: 600, created_at: '2' });
+    w.tables.students.find((s) => s.id === 's3').batch_id = 'batch-two';
+    const r = await call(announce, { text: 'Hi class 9', batch_id: 'batch-two' });
+    expect(r.body.sent).toBe(1);
+    expect(w.sent[0].chat).toBe(333);
+  });
+  it('a parent with two children gets it once', async () => {
+    const w = world();
+    w.tables.parent_chats.push({ id: 'c9', owner_id: 'o1', student_id: 's2', chat_id: 111 });
+    const r = await call(announce, { text: 'Holiday' });
+    expect(w.sent.filter((m) => m.chat === 111)).toHaveLength(1);
+    expect(r.body.sent).toBe(2);
+  });
+  it('needs the teacher, and an empty message sends nothing', async () => {
+    const w = world();
+    expect((await call(announce, { text: 'x' }, 'nobody')).code).toBe(401);
+    expect((await call(announce, { text: '   ' })).body.sent).toBe(0);
+    expect(w.sent).toHaveLength(0);
+  });
+  it('a parent\'s message is kept, acknowledged, and pinged to the teacher', async () => {
+    const w = world();
+    w.tables.reminder_settings.push({ owner_id: 'o1', teacher_chat_id: 900 });
+    await talk('Can my son join the Sunday batch?', 111);
+    expect(w.tables.parent_messages).toHaveLength(1);
+    expect(w.tables.parent_messages[0]).toMatchObject({ direction: 'in', student_id: 's1', chat_id: 111, body: 'Can my son join the Sunday batch?' });
+    expect(w.sent.find((m) => m.chat === 111).text).toMatch(/passed to the teacher/);
+    expect(w.sent.find((m) => m.chat === 900).text).toMatch(/Mrs Paul \(Asha\)[\s\S]*Sunday batch/);
+  });
+  it('someone who is not connected just gets the help text', async () => {
+    const w = world();
+    await talk('hello?', 999);
+    expect(w.tables.parent_messages).toHaveLength(0);
+    expect(w.sent.at(-1).text).toMatch(/personal link/);
+  });
+  it('the teacher can reply, and only to a parent of theirs', async () => {
+    const w = world();
+    const ok1 = await call(reply, { chat_id: 111, student_id: 's1', text: 'Yes, come at 5' });
+    expect(ok1.code).toBe(200);
+    expect(w.sent.at(-1)).toMatchObject({ chat: 111 });
+    expect(w.sent.at(-1).text).toMatch(/Yes, come at 5/);
+    expect(w.tables.parent_messages.at(-1)).toMatchObject({ direction: 'out', read: true });
+    const bad = await call(reply, { chat_id: 555, student_id: 's1', text: 'sneaky' });
+    expect(bad.code).toBe(400);
+    expect((await call(reply, { chat_id: 111, student_id: 's1', text: 'x' }, 'nobody')).code).toBe(401);
   });
 });

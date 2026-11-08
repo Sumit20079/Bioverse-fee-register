@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { backend, exitGuest, isDemo, isGuest, rememberSignedIn, signOutSafe, supabase, sync, wasSignedIn } from './lib/db';
 import SyncPill from './components/SyncPill';
 import RemindersSheet from './components/RemindersSheet';
-import { loadLinked, sendReceipt } from './lib/telegram';
+import AnnounceSheet from './components/AnnounceSheet';
+import MessagesSheet from './components/MessagesSheet';
+import { loadLinked, sendReceipt, unreadCount } from './lib/telegram';
 import { currentMonth, longDateLabel, monthLabel, monthsBetween, todayISO } from './lib/dates';
 import { dueList, feeOn, monthView, staleSettled, withBatchMove, withFeeChange } from './lib/calc';
 import { download, receiptContact, receiptText, waLink } from './lib/format';
@@ -104,6 +106,12 @@ function Register() {
   const [batchId, setBatchId] = useState(null);
   const [month, setMonth] = useState(currentMonth());
   const [sheet, setSheet] = useState(null);
+  const [unread, setUnread] = useState(0);
+  const [unreadTick, setUnreadTick] = useState(0);
+  useEffect(() => {
+    if (isDemo || !navigator.onLine || sheet?.type !== 'settings') return;
+    unreadCount().then(setUnread);
+  }, [sheet?.type, unreadTick]); // eslint-disable-line react-hooks/exhaustive-deps
   const [look, setLook] = useState(loadLook);
   const lookRef = useRef(look);
   lookRef.current = look;
@@ -648,12 +656,19 @@ function Register() {
         net={isDemo ? null : net}
         onSyncNow={syncNow}
         onReminders={() => setSheet({ type: 'reminders', from: 'settings' })}
+        onAnnounce={() => setSheet({ type: 'announce', from: 'settings' })}
+        onMessages={() => setSheet({ type: 'messages', from: 'settings' })}
+        unread={unread}
       />
     );
   } else if (sheet?.type === 'lock') {
     sheetEl = <LockSheet cfg={lockCfg} onChanged={() => setLockCfg(loadLock())} onClose={closeBack} />;
   } else if (sheet?.type === 'about') {
     sheetEl = <AboutSheet onClose={closeBack} />;
+  } else if (sheet?.type === 'announce') {
+    sheetEl = <AnnounceSheet onClose={closeBack} batches={data.batches} students={data.students} flash={flash} />;
+  } else if (sheet?.type === 'messages') {
+    sheetEl = <MessagesSheet onClose={() => { closeBack(); setUnreadTick((n) => n + 1); }} students={data.students} flash={flash} />;
   } else if (sheet?.type === 'reminders') {
     sheetEl = <RemindersSheet onClose={closeBack} onChanged={refreshLinked} flash={flash} />;
   } else if (sheet?.type === 'appearance') {
