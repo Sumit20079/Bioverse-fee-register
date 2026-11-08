@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import Sheet from './Sheet';
 import { DEFAULT_REMINDER, fillTemplate } from '../lib/format';
-import { loadLinked, loadSettings, saveSettings, sendNow } from '../lib/telegram';
+import { loadLinked, loadSettings, saveSettings, sendNow, teacherLink } from '../lib/telegram';
 
 const MODES = [
   ['manual', 'Only when I tap'],
@@ -65,6 +65,30 @@ export default function RemindersSheet({ onClose, onChanged, flash }) {
     setBusy(false);
   };
 
+  const connectMe = async () => {
+    setBusy(true);
+    try {
+      await saveSettings(s); // makes sure the settings row (and its private link) exists
+      const fresh = await loadSettings();
+      set({ teacher_token: fresh.teacher_token, teacher_chat_id: fresh.teacher_chat_id });
+      const link = teacherLink(fresh.teacher_token);
+      if (link) window.open(link, '_blank', 'noopener');
+      else flash('Couldn’t make the link. Is the database updated?');
+    } catch (e) {
+      flash(`Couldn’t connect: ${e.message}`);
+    }
+    setBusy(false);
+  };
+  const recheck = async () => {
+    try {
+      const fresh = await loadSettings();
+      set({ teacher_chat_id: fresh.teacher_chat_id });
+      flash(fresh.teacher_chat_id ? 'Your Telegram is connected' : 'Not connected yet. Press Start in the bot first.');
+    } catch {
+      flash('Couldn’t check. Are you online?');
+    }
+  };
+
   const sample = fillTemplate(s?.message, { name: 'Asha', amount: 1500, monthsLabel: 'Oct, Nov', batchName: 'Class 10' });
 
   return (
@@ -118,6 +142,49 @@ export default function RemindersSheet({ onClose, onChanged, flash }) {
           <div className="notice" style={{ marginBottom: 12 }}>
             <b>Preview</b>
             <div className="small" style={{ marginTop: 4 }}>{sample}</div>
+          </div>
+
+          <div className="field">
+            <label htmlFor="rm-warn">Heads-up before the day</label>
+            <select id="rm-warn" value={s.warn_days || 0} disabled={s.mode === 'manual'} onChange={(e) => set({ warn_days: Number(e.target.value) })}>
+              <option value={0}>Off</option>
+              {[1, 2, 3, 5, 7].map((n) => (
+                <option key={n} value={n}>
+                  {n} day{n === 1 ? '' : 's'} before
+                </option>
+              ))}
+            </select>
+            <p className="hint">{s.mode === 'manual' ? 'Pick “Once a month” or “Keep repeating” above to use this.' : 'A soft “fee is due soon” message to parents whose child has not paid this month.'}</p>
+          </div>
+
+          <div className="notice" style={{ marginBottom: 12 }}>
+            <b>Updates to you</b>
+            <div className="small" style={{ margin: '4px 0 8px' }}>
+              {s.teacher_chat_id ? 'Your Telegram is connected.' : 'Connect your own Telegram to get a message when a parent connects, and a monthly summary.'}
+            </div>
+            {!s.teacher_chat_id ? (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn secondary" type="button" disabled={busy} onClick={connectMe}>
+                  Connect my Telegram
+                </button>
+                {s.teacher_token && (
+                  <button className="btn secondary" type="button" onClick={recheck}>
+                    I pressed Start
+                  </button>
+                )}
+              </div>
+            ) : (
+              <>
+                <label className="check" style={{ marginBottom: 6 }}>
+                  <input type="checkbox" checked={s.notify_connect !== false} onChange={(e) => set({ notify_connect: e.target.checked })} />
+                  <span>Tell me when a parent connects</span>
+                </label>
+                <label className="check">
+                  <input type="checkbox" checked={!!s.summary} onChange={(e) => set({ summary: e.target.checked })} />
+                  <span>Send me last month’s summary on the 1st</span>
+                </label>
+              </>
+            )}
           </div>
 
           <label className="check" style={{ marginBottom: 12 }}>

@@ -3,7 +3,9 @@ import { supabase } from './db';
 export const BOT = import.meta.env.VITE_TELEGRAM_BOT || 'bioverse_manager_bot';
 export const tgLink = (student) => (student?.tg_token ? `https://t.me/${BOT}?start=${student.tg_token}` : null);
 
-export const DEFAULT_SETTINGS = { mode: 'manual', day: 28, every_days: 3, message: '', receipts: true };
+export const teacherLink = (token) => (token ? `https://t.me/${BOT}?start=${token}` : null);
+
+export const DEFAULT_SETTINGS = { mode: 'manual', day: 28, every_days: 3, message: '', receipts: true, warn_days: 0, summary: false, notify_connect: true };
 
 // Who is connected on Telegram, as Map(student id -> number of chats). Empty when offline or not set up yet.
 export async function loadLinked() {
@@ -23,7 +25,7 @@ export async function loadSettings() {
 
 export async function saveSettings(s) {
   const { data: u } = await supabase.auth.getUser();
-  const row = { owner_id: u.user.id, mode: s.mode, day: Number(s.day), every_days: Number(s.every_days), message: s.message.trim() || null, receipts: s.receipts !== false, updated_at: new Date().toISOString() };
+  const row = { owner_id: u.user.id, mode: s.mode, day: Number(s.day), every_days: Number(s.every_days), message: s.message.trim() || null, receipts: s.receipts !== false, warn_days: Number(s.warn_days) || 0, summary: !!s.summary, notify_connect: s.notify_connect !== false, updated_at: new Date().toISOString() };
   const { error } = await supabase.from('reminder_settings').upsert(row, { onConflict: 'owner_id' });
   if (error) throw error;
 }

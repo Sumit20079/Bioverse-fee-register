@@ -1,6 +1,6 @@
 // Shared by the Telegram functions. Runs on Vercel, never in the browser.
-import { dueList } from '../src/lib/calc.js';
-import { monthLabel, monthsText } from '../src/lib/dates.js';
+import { dueList, monthView } from '../src/lib/calc.js';
+import { addMonths, monthLabel, monthsText } from '../src/lib/dates.js';
 import { fillTemplate, receiptText, rupees } from '../src/lib/format.js';
 import { shape } from '../src/lib/shape.js';
 
@@ -121,7 +121,7 @@ export async function ownerFromToken(jwt) {
 }
 
 // Buttons shown under the chat box. Tapping one sends its text, which the webhook understands.
-export const KEYBOARD = { reply_markup: { keyboard: [[{ text: '📊 Status' }, { text: '🔕 Stop reminders' }]], resize_keyboard: true, is_persistent: true } };
+export const KEYBOARD = { reply_markup: { keyboard: [[{ text: '📊 Status' }, { text: '🧾 History' }, { text: '🔕 Stop reminders' }]], resize_keyboard: true, is_persistent: true } };
 
 // "/status": what this child owes right now, and the last payment.
 export async function statusText(chat) {
@@ -155,4 +155,57 @@ export async function sendReceipt(owner, studentId, { amount, month, balance = 0
     if (r.gone) await db('DELETE', `parent_chats?id=eq.${c.id}`);
   }
   return sent;
+}
+
+// "/history": every month paid so far (newest first), with dates.
+export async function historyText(chat) {
+  const data = await loadData(chat.owner_id);
+  const student = data.students.find((s) => s.id === chat.student_id);
+  if (!student) return 'Sorry, this student is not in the register any more.';
+  const by = new Map();
+  for (const p of data.payments) {
+    if (p.student_id !== student.id || !(p.amount > 0)) continue;
+    const e = by.get(p.month) || { amount: 0, on: '' };
+    e.amount += p.amount;
+    if ((p.paid_on || '') > e.on) e.on = String(p.paid_on || '').slice(0, 10);
+    by.set(p.month, e);
+  }
+  const months = [...by.keys()].sort().reverse();
+  if (!months.length) return `No payments recorded yet for ${student.name}.`;
+  const shown = months.slice(0, 12);
+  const lines = shown.map((m) => `• ${monthLabel(m)}: ${rupees(by.get(m).amount)}${by.get(m).on ? ` (paid ${by.get(m).on})` : ''}`);
+  return `Payment history for ${student.name}\n${lines.join('\n')}${months.length > shown.length ? `\n…and ${months.length - shown.length} earlier months` : ''}`;
+}
+
+// A gentle heads-up a few days BEFORE the reminder day, only for students whose only unpaid month is this one.
+export async function headsUpOwner(owner, settings) {
+  const t = istNow();
+  if (!settings.warn_days || settings.mode === 'manual' || t.day !== settings.day - settings.warn_days) return { sent: 0 };
+  const data = await loadData(owner);
+  const chats = await db('GET', `parent_chats?select=*&owner_id=eq.${owner}`);
+  let sent = 0;
+  for (const d of dueList(data, t.month)) {
+    if (d.months.length !== 1 || d.months[0] !== t.month) continue;
+    for (const c of chats.filter((x) => x.student_id === d.student.id)) {
+      const text = `Hello, a gentle heads-up: the tuition fee for ${d.student.name} (${d.batch.name}) for ${monthLabel(t.month)} (${rupees(d.amount)}) falls due on day ${settings.day}. Please ignore this if you have already paid. Thank you!`;
+      const r = await sendTelegram(c.chat_id, text);
+      if (r.ok) sent += 1;
+      if (r.gone) await db('DELETE', `parent_chats?id=eq.${c.id}`);
+    }
+  }
+  return { sent };
+}
+
+// On the 1st: last month's numbers, sent to the teacher's own Telegram.
+export async function summaryOwner(owner, settings) {
+  const t = istNow();
+  if (!settings.summary || !settings.teacher_chat_id || t.day !== 1) return { sent: 0 };
+  const data = await loadData(owner);
+  const month = addMonths(t.month, -1);
+  const v = monthView(data, month);
+  const owing = v.batches.flatMap((b) => b.rows.filter((r) => r.owes).map((r) => r.student.name)).sort();
+  const lines = [`Fee summary for ${monthLabel(month)}`, `Collected ${rupees(v.collected)} of ${rupees(v.expected)}`, `${v.paidCount} paid · ${v.dueCount} still due (${rupees(v.pending)})`];
+  if (owing.length) lines.push('', `Still to pay: ${owing.slice(0, 15).join(', ')}${owing.length > 15 ? ` and ${owing.length - 15} more` : ''}`);
+  const r = await sendTelegram(settings.teacher_chat_id, lines.join('\n'));
+  return { sent: r.ok ? 1 : 0 };
 }

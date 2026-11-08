@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { dueToday, remindOwner } from '../api/_lib.js';
+import { dueToday, headsUpOwner, remindOwner, summaryOwner } from '../api/_lib.js';
 import handler from '../api/telegram.js';
 import remind from '../api/remind.js';
 import receipt from '../api/receipt.js';
@@ -86,6 +86,10 @@ function world() {
       const dup = table === 'parent_chats' && t.find((x) => x.student_id === row.student_id && x.chat_id === row.chat_id);
       if (!dup) t.push(row);
       return json([row]);
+    }
+    if (init.method === 'PATCH') {
+      for (const r of t.filter((x) => match(x, f))) Object.assign(r, JSON.parse(init.body));
+      return json([]);
     }
     if (init.method === 'DELETE') {
       w.tables[table] = t.filter((r) => !match(r, f));
@@ -244,5 +248,88 @@ describe('payment receipts', () => {
     w.tables.parent_chats.push({ id: 'cx', owner_id: 'other', student_id: 'x', chat_id: 5 });
     expect((await post({ student_id: 'x', amount: 500, month: month() })).body.sent).toBe(0);
     expect(w.sent).toHaveLength(0);
+  });
+});
+
+describe('round 1 extras', () => {
+  const hit = (text, chat) => {
+    const r = res();
+    return handler({ method: 'POST', headers: { 'x-telegram-bot-api-secret-token': 'whsec' }, body: { message: { text, chat: { id: chat }, from: { first_name: 'Parent' } } } }, r);
+  };
+  const today = () => new Date(Date.now() + 5.5 * 3600e3).toISOString();
+  const S = (o) => ({ owner_id: 'o1', mode: 'once', day: 28, every_days: 3, warn_days: 0, summary: false, notify_connect: true, teacher_chat_id: null, ...o });
+
+  it('/history lists paid months', async () => {
+    const w = world();
+    await hit('/history', 333);
+    expect(w.sent.at(-1).text).toMatch(/Payment history for Chitra[\s\S]*₹800/);
+  });
+  it('/history with nothing paid says so', async () => {
+    const w = world();
+    await hit('🧾 History', 111);
+    expect(w.sent.at(-1).text).toMatch(/No payments recorded yet for Asha/);
+  });
+  it('teacher connects with the private link', async () => {
+    const w = world();
+    w.tables.reminder_settings.push(S({ teacher_token: 'tchabc' }));
+    await hit('/start tchabc', 900);
+    expect(w.tables.reminder_settings[0].teacher_chat_id).toBe(900);
+    expect(w.sent.at(-1).text).toMatch(/Connected as the teacher/);
+  });
+  it('a wrong teacher link connects nobody', async () => {
+    const w = world();
+    w.tables.reminder_settings.push(S({ teacher_token: 'tchabc' }));
+    await hit('/start tchwrong', 900);
+    expect(w.tables.reminder_settings[0].teacher_chat_id).toBe(null);
+  });
+  it('the teacher hears when a parent connects (if on)', async () => {
+    const w = world();
+    w.tables.reminder_settings.push(S({ teacher_chat_id: 900 }));
+    await hit('/start tok2', 777);
+    expect(w.sent.find((m) => m.chat === 900).text).toMatch(/connected on Telegram for Bimal/);
+    w.sent.length = 0;
+    w.tables.reminder_settings[0].notify_connect = false;
+    await hit('/start tok2', 778);
+    expect(w.sent.find((m) => m.chat === 900)).toBeUndefined();
+  });
+  const at = (iso) => (vi.isFakeTimers() ? vi.setSystemTime(new Date(iso)) : vi.useFakeTimers({ toFake: ['Date'], now: new Date(iso) }));
+  afterEach(() => vi.useRealTimers());
+  it('heads-up goes out only on the right day, only to this-month dues', async () => {
+    const w = world(); // built at the real date; only Asha and Bimal owe
+    at('2026-11-26T04:00:00Z'); // 26 Nov IST; reminder day 28, warn 2 days before
+    w.tables.students.forEach((x) => (x.joined_month = '2026-11-01'));
+    w.tables.payments.forEach((x) => (x.month = '2026-11-01'));
+    expect((await headsUpOwner('o1', S({ warn_days: 3, day: 28 }))).sent).toBe(0); // wrong day
+    const r = await headsUpOwner('o1', S({ warn_days: 2, day: 28 }));
+    expect(r.sent).toBe(1);
+    expect(w.sent[0]).toMatchObject({ chat: 111 });
+    expect(w.sent[0].text).toMatch(/gentle heads-up.*Asha.*₹800/);
+  });
+  it('heads-up is off in manual mode or when set to 0', async () => {
+    world();
+    at('2026-11-26T04:00:00Z');
+    expect((await headsUpOwner('o1', S({ mode: 'manual', warn_days: 2, day: 28 }))).sent).toBe(0);
+    expect((await headsUpOwner('o1', S({ warn_days: 0, day: 26 }))).sent).toBe(0);
+  });
+  it('the monthly summary only goes on the 1st, to a connected teacher', async () => {
+    const w = world();
+    at('2026-12-01T04:00:00Z');
+    const r = await summaryOwner('o1', S({ summary: true, teacher_chat_id: 900 }));
+    expect(r.sent).toBe(1);
+    expect(w.sent[0]).toMatchObject({ chat: 900 });
+    expect(w.sent[0].text).toMatch(/Fee summary for November 2026[\s\S]*Collected/);
+    at('2026-12-02T04:00:00Z');
+    expect((await summaryOwner('o1', S({ summary: true, teacher_chat_id: 900 }))).sent).toBe(0);
+    at('2026-12-01T04:00:00Z');
+    expect((await summaryOwner('o1', S({ summary: true, teacher_chat_id: null }))).sent).toBe(0);
+    expect((await summaryOwner('o1', S({ summary: false, teacher_chat_id: 900 }))).sent).toBe(0);
+  });
+  it('the timer runs everything for each teacher and survives one failing', async () => {
+    const w = world();
+    w.tables.reminder_settings.push(S({ mode: 'manual' }));
+    const r = res();
+    await remind({ headers: { authorization: 'Bearer cron' } }, r);
+    expect(r.code).toBe(200);
+    expect(r.body.teachers).toBe(1);
   });
 });
