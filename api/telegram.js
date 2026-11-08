@@ -1,10 +1,11 @@
 // Telegram calls this when a parent messages the bot. "/start <code>" connects that parent to a student.
-import { config, createClaim, db, historyText, keyboardForChat, ok, saveParentMessage, saveProof, sendTelegram, statusText, tg } from './_lib.js';
+import { config, createClaim, db, historyText, keyboardForChat, marksText, ok, saveParentMessage, saveProof, sendTelegram, statusText, tg } from './_lib.js';
 import { keyboardFor, langButtons, langOf, paidButton, T } from './_i18n.js';
 
 const COMMANDS = [
   { command: 'status', description: 'See fee status' },
   { command: 'history', description: 'See past payments' },
+  { command: 'marks', description: 'See test results' },
   { command: 'language', description: 'Language / ভাষা' },
   { command: 'stop', description: 'Stop fee reminders' },
   { command: 'help', description: 'How this bot works' },
@@ -105,6 +106,12 @@ export default async function handler(req, res) {
       const chats = await db('GET', `parent_chats?select=*&chat_id=eq.${chatId}`);
       if (!chats.length) await needLink(chatId);
       for (const c of chats) await sendTelegram(chatId, await historyText(c), keyboardForChat(c));
+      return ok(res);
+    }
+    if (/^\/marks\b/i.test(text) || /^📝/.test(text)) {
+      const chats = await db('GET', `parent_chats?select=*&chat_id=eq.${chatId}`);
+      if (!chats.length) await needLink(chatId);
+      for (const c of chats) await sendTelegram(chatId, await marksText(c), keyboardForChat(c));
       return ok(res);
     }
     const m = text.match(/^\/start(?:\s+(\w+))?/i);

@@ -672,3 +672,12 @@ input.bright::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; 
 .bubble.them { background: rgba(127,127,127,.14); }
 .bubble.me { background: var(--accent-soft, rgba(31,111,178,.18)); margin-left: auto; }
 .tgbadge.claim { background: #fde7c8; color: #7a4a00; }
+
+/* ---------- exam marks ---------- */
+.markrow { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line, rgba(0,0,0,.08)); }
+.markname { flex: 1; min-width: 0; }
+.markname small { display: block; opacity: .7; }
+.markin { width: 84px; min-height: 44px; padding: 0 10px; border: 1px solid var(--field, #ccc); border-radius: 10px; font-size: 16px; text-align: right; background: #fff; }
+.markin.bad { border-color: #c0392b; background: #fdecea; }
+.markin:disabled { opacity: .5; }
+.markabs { display: flex; align-items: center; gap: 4px; font-size: 13px; }

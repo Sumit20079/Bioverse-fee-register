@@ -39,7 +39,7 @@ function StatusPill({ status, name, onClick }) {
   );
 }
 
-export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditStudent, onEditBatch, onAddStudent, onDeleteMany, onMoveMany }) {
+export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditStudent, onEditBatch, onAddStudent, onDeleteMany, onMoveMany, onTests }) {
   const fee = feeFor(v.batch, month);
   const [filter, setFilterRaw] = useState('all');
   const [selecting, setSelecting] = useState(false);
@@ -121,6 +121,11 @@ export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditS
         {v.total > 0 && (
           <button className={'chip' + (selecting ? ' on' : '')} aria-pressed={selecting} onClick={() => (selecting ? stopSelecting() : setSelecting(true))}>
             {selecting ? 'Done' : 'Select'}
+          </button>
+        )}
+        {onTests && (
+          <button className="chip" onClick={onTests}>
+            Tests
           </button>
         )}
         <button className="chip" onClick={onEditBatch}>

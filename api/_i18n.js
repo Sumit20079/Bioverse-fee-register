@@ -10,7 +10,7 @@ export const langOf = (chat) => (chat && chat.lang === 'bn' ? 'bn' : 'en');
 const en = {
   month: (k) => `${EN_LONG[idx(k)]} ${String(k).slice(0, 4)}`,
   months: (ms) => (ms.length === 1 ? EN_SHORT[idx(ms[0])] : ms.length === 2 ? `${EN_SHORT[idx(ms[0])]} + ${EN_SHORT[idx(ms[1])]}` : `${EN_SHORT[idx(ms[0])]} – ${EN_SHORT[idx(ms[ms.length - 1])]} · ${ms.length} months`),
-  help: 'Hello! This bot sends tuition fee reminders. To connect, open the personal link your teacher sent you and press Start. Send /status for the fee status, /history for past payments, /language to change language, or /stop to stop the reminders.',
+  help: 'Hello! This bot sends tuition fee reminders. To connect, open the personal link your teacher sent you and press Start. Send /status for the fee status, /history for past payments, /marks for test results, /language to change language, or /stop to stop the reminders.',
   connected: (name) => `Connected. You will get tuition fee reminders for ${name} here. Send /status any time to see the fee status, or /stop to stop reminders.`,
   invalid: 'This link is not valid any more. Please ask your teacher for a new one.',
   stopped: "Okay, you will not get fee reminders any more. Open your teacher's link again any time to reconnect.",
@@ -34,13 +34,19 @@ const en = {
   paidThanks: 'Thank you! Your teacher has been told and will confirm. You can send a screenshot of the payment here if you like.',
   nothingDue: 'Nothing is pending right now. You are all paid up ✅',
   gotShot: 'Got the screenshot, thank you. Your teacher will check it.',
-  kb: ['📊 Status', '🧾 History', '🔕 Stop reminders'],
+  resultMsg: ({ name, exam, date, score, total, pct, rank, count, high }) => `Result: ${name} — ${exam} (${date})\nScore: ${score} / ${total} (${pct}%)\nRank: ${rank} of ${count}\nHighest score: ${high}`,
+  marksTitle: (n) => `Recent test results for ${n}`,
+  marksNone: (n) => `No test results yet for ${n}.`,
+  marksLine: ({ exam, date, score, total, pct, rank, count, high }) => `• ${exam} (${date}): ${score} / ${total} (${pct}%) · Rank ${rank} of ${count} · Highest ${high}`,
+  marksAbsent: ({ exam, date }) => `• ${exam} (${date}): Absent`,
+  date: (iso) => { const d = String(iso).slice(0, 10).split('-'); return `${Number(d[2])} ${EN_SHORT[Number(d[1]) - 1]} ${d[0]}`; },
+  kb: [['📊 Status', '🧾 History'], ['📝 Marks', '🔕 Stop reminders']],
 };
 
 const bn = {
   month: (k) => `${BN_MONTHS[idx(k)]} ${String(k).slice(0, 4)}`,
   months: (ms) => (ms.length === 1 ? BN_MONTHS[idx(ms[0])] : ms.length === 2 ? `${BN_MONTHS[idx(ms[0])]} ও ${BN_MONTHS[idx(ms[1])]}` : `${BN_MONTHS[idx(ms[0])]} থেকে ${BN_MONTHS[idx(ms[ms.length - 1])]} (${ms.length} মাস)`),
-  help: 'নমস্কার! এই বট টিউশন ফি-এর রিমাইন্ডার পাঠায়। সংযোগ করতে শিক্ষকের পাঠানো ব্যক্তিগত লিঙ্কটি খুলে Start চাপুন। ফি-এর অবস্থা দেখতে /status, আগের পেমেন্ট দেখতে /history, ভাষা বদলাতে /language, আর রিমাইন্ডার বন্ধ করতে /stop পাঠান।',
+  help: 'নমস্কার! এই বট টিউশন ফি-এর রিমাইন্ডার পাঠায়। সংযোগ করতে শিক্ষকের পাঠানো ব্যক্তিগত লিঙ্কটি খুলে Start চাপুন। ফি-এর অবস্থা দেখতে /status, আগের পেমেন্ট দেখতে /history, পরীক্ষার ফল দেখতে /marks, ভাষা বদলাতে /language, আর রিমাইন্ডার বন্ধ করতে /stop পাঠান।',
   connected: (name) => `সংযুক্ত হয়েছে। এখানে ${name}-এর টিউশন ফি-এর রিমাইন্ডার পাবেন। ফি-এর অবস্থা দেখতে /status, রিমাইন্ডার বন্ধ করতে /stop পাঠান।`,
   invalid: 'এই লিঙ্কটি আর কাজ করছে না। অনুগ্রহ করে শিক্ষকের কাছ থেকে নতুন লিঙ্ক চেয়ে নিন।',
   stopped: 'ঠিক আছে, আপনি আর ফি-এর রিমাইন্ডার পাবেন না। আবার চালু করতে শিক্ষকের লিঙ্কটি আবার খুলুন।',
@@ -64,11 +70,17 @@ const bn = {
   paidThanks: 'ধন্যবাদ! শিক্ষককে জানানো হয়েছে, তিনি নিশ্চিত করবেন। চাইলে পেমেন্টের স্ক্রিনশট এখানে পাঠাতে পারেন।',
   nothingDue: 'এখন কিছু বাকি নেই। সব ফি জমা আছে ✅',
   gotShot: 'স্ক্রিনশট পেয়েছি, ধন্যবাদ। শিক্ষক এটি দেখে নেবেন।',
-  kb: ['📊 স্ট্যাটাস', '🧾 হিস্ট্রি', '🔕 রিমাইন্ডার বন্ধ'],
+  resultMsg: ({ name, exam, date, score, total, pct, rank, count, high }) => `ফলাফল: ${name} — ${exam} (${date})\nপ্রাপ্ত নম্বর: ${score} / ${total} (${pct}%)\nর‍্যাঙ্ক: ${count} জনের মধ্যে ${rank}\nসর্বোচ্চ নম্বর: ${high}`,
+  marksTitle: (n) => `${n}-এর সাম্প্রতিক পরীক্ষার ফল`,
+  marksNone: (n) => `${n}-এর এখনও কোনো পরীক্ষার ফল নেই।`,
+  marksLine: ({ exam, date, score, total, pct, rank, count, high }) => `• ${exam} (${date}): ${score} / ${total} (${pct}%) · র‍্যাঙ্ক ${count} জনের মধ্যে ${rank} · সর্বোচ্চ ${high}`,
+  marksAbsent: ({ exam, date }) => `• ${exam} (${date}): অনুপস্থিত`,
+  date: (iso) => { const d = String(iso).slice(0, 10).split('-'); return `${Number(d[2])} ${BN_MONTHS[Number(d[1]) - 1]} ${d[0]}`; },
+  kb: [['📊 স্ট্যাটাস', '🧾 হিস্ট্রি'], ['📝 নম্বর', '🔕 রিমাইন্ডার বন্ধ']],
 };
 
 export const T = (lang) => (lang === 'bn' ? bn : en);
-export const keyboardFor = (lang) => ({ reply_markup: { keyboard: [T(lang).kb.map((text) => ({ text }))], resize_keyboard: true, is_persistent: true } });
+export const keyboardFor = (lang) => ({ reply_markup: { keyboard: T(lang).kb.map((row) => row.map((text) => ({ text }))), resize_keyboard: true, is_persistent: true } });
 export const paidButton = (lang, studentId) => ({ reply_markup: { inline_keyboard: [[{ text: T(lang).paidBtn, callback_data: `paid:${studentId}` }]] } });
 export const langButtons = () => ({ reply_markup: { inline_keyboard: [[{ text: 'English', callback_data: 'lang:en' }, { text: 'বাংলা', callback_data: 'lang:bn' }]] } });
 export { rupees };

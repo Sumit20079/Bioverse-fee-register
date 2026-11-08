@@ -5,6 +5,7 @@ import RemindersSheet from './components/RemindersSheet';
 import AnnounceSheet from './components/AnnounceSheet';
 import MessagesSheet from './components/MessagesSheet';
 import ClaimsSheet from './components/ClaimsSheet';
+import ExamsSheet from './components/ExamsSheet';
 import { claimedStudents, finishClaim, loadLinked, sendReceipt, unreadCount } from './lib/telegram';
 import { currentMonth, longDateLabel, monthLabel, monthsBetween, todayISO } from './lib/dates';
 import { dueList, feeOn, monthView, staleSettled, withBatchMove, withFeeChange } from './lib/calc';
@@ -392,6 +393,7 @@ function Register() {
         onPay={openPay}
         onEditStudent={(student) => setSheet({ type: 'student', student })}
         onEditBatch={() => setSheet({ type: 'batch', batch: detail.batch })}
+        onTests={isDemo ? undefined : () => setSheet({ type: 'exams', batchId: detail.batch.id })}
         onAddStudent={() => addStudent(detail.batch.id)}
         onDeleteMany={(ids, done) => setSheet({ type: 'bulkdelete', ids, done })}
         onMoveMany={(ids, done) => setSheet({ type: 'move', ids, done })}
@@ -671,6 +673,9 @@ function Register() {
     sheetEl = <LockSheet cfg={lockCfg} onChanged={() => setLockCfg(loadLock())} onClose={closeBack} />;
   } else if (sheet?.type === 'about') {
     sheetEl = <AboutSheet onClose={closeBack} />;
+  } else if (sheet?.type === 'exams') {
+    const batch = data.batches.find((b) => b.id === sheet.batchId);
+    sheetEl = batch ? <ExamsSheet onClose={close} batch={batch} students={data.students} flash={flash} /> : null;
   } else if (sheet?.type === 'claims') {
     sheetEl = (
       <ClaimsSheet

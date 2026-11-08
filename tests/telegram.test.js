@@ -5,6 +5,8 @@ import remind from '../api/remind.js';
 import receipt from '../api/receipt.js';
 import announce from '../api/announce.js';
 import reply from '../api/reply.js';
+import results from '../api/results.js';
+import { examStats } from '../src/lib/marks.js';
 
 const T = (date) => ({ today: date, day: Number(date.slice(8)) });
 
@@ -54,6 +56,12 @@ function world() {
       reminder_settings: [],
       parent_messages: [],
       payment_claims: [],
+      exams: [{ id: 'exam-one-1', owner_id: 'o1', batch_id: 'b1', name: 'Unit test 1', total: 50, held_on: '2026-11-05', created_at: '1' }],
+      exam_marks: [
+        { id: 'm1', owner_id: 'o1', exam_id: 'exam-one-1', student_id: 's1', score: 34, absent: false, sent_score: null, sent_at: null },
+        { id: 'm2', owner_id: 'o1', exam_id: 'exam-one-1', student_id: 's2', score: 47, absent: false, sent_score: null, sent_at: null },
+        { id: 'm3', owner_id: 'o1', exam_id: 'exam-one-1', student_id: 's3', score: null, absent: true, sent_score: null, sent_at: null },
+      ],
     },
     blocked: new Set(),
   };
@@ -504,5 +512,73 @@ describe('round 3: Bengali and "I\'ve paid"', () => {
     await say({ photo: [{ file_id: 'x' }], chat: { id: 999 } });
     expect(w.tables.payment_claims).toHaveLength(0);
     expect(w.uploads).toHaveLength(0);
+  });
+});
+
+describe('round 4: exam marks', () => {
+  const post = (body, jwt = 'teacher-jwt') => {
+    const r = res();
+    return results({ method: 'POST', headers: { authorization: `Bearer ${jwt}` }, body }, r).then(() => r);
+  };
+  const talk = (text, chat) => {
+    const r = res();
+    return handler({ method: 'POST', headers: { 'x-telegram-bot-api-secret-token': 'whsec' }, body: { message: { text, chat: { id: chat }, from: { first_name: 'P' } } } }, r);
+  };
+
+  it('ranks share a place on a tie and absent students are left out', () => {
+    const st = examStats([
+      { student_id: 'a', score: 40 },
+      { student_id: 'b', score: 40 },
+      { student_id: 'c', score: 30 },
+      { student_id: 'd', score: null, absent: true },
+      { student_id: 'e', score: '' },
+    ]);
+    expect([st.rank.get('a'), st.rank.get('b'), st.rank.get('c')]).toEqual([1, 1, 3]);
+    expect(st.count).toBe(3);
+    expect(st.average).toBeCloseTo(36.67, 1);
+    expect(st.highest).toBe(40);
+    expect(st.rank.has('d')).toBe(false);
+  });
+  it('parents get score, percentage, rank and the highest score', async () => {
+    const w = world();
+    const r = await post({ exam_id: 'exam-one-1' });
+    expect(r.body.sent).toBe(1); // only Asha is connected and has a mark; Chitra was absent
+    expect(w.sent[0]).toMatchObject({ chat: 111 });
+    expect(w.sent[0].text).toMatch(/Asha — Unit test 1[\s\S]*34 \/ 50 \(68%\)[\s\S]*Rank: 2 of 2[\s\S]*Highest score: 47/);
+  });
+  it('is not sent twice, but a corrected mark is sent again', async () => {
+    const w = world();
+    await post({ exam_id: 'exam-one-1' });
+    await post({ exam_id: 'exam-one-1' });
+    expect(w.sent).toHaveLength(1);
+    w.tables.exam_marks.find((m) => m.student_id === 's1').score = 36;
+    await post({ exam_id: 'exam-one-1' });
+    expect(w.sent).toHaveLength(2);
+    expect(w.sent[1].text).toMatch(/36 \/ 50 \(72%\)/);
+  });
+  it('follows the parent\'s language', async () => {
+    const w = world();
+    w.tables.parent_chats.find((c) => c.chat_id === 111).lang = 'bn';
+    await post({ exam_id: 'exam-one-1' });
+    expect(w.sent[0].text).toMatch(/ফলাফল: Asha — Unit test 1[\s\S]*34 \/ 50 \(68%\)/);
+  });
+  it('needs the teacher, and only their own tests', async () => {
+    const w = world();
+    expect((await post({ exam_id: 'exam-one-1' }, 'nobody')).code).toBe(401);
+    expect((await post({ exam_id: 'someone-elses-test' })).code).toBe(404);
+    expect(w.sent).toHaveLength(0);
+  });
+  it('/marks shows the child\'s results, absent too', async () => {
+    const w = world();
+    await talk('/marks', 111);
+    expect(w.sent.at(-1).text).toMatch(/Recent test results for Asha[\s\S]*Unit test 1 \(5 Nov 2026\): 34 \/ 50 \(68%\) · Rank 2 of 2 · Highest 47/);
+    await talk('📝 Marks', 333);
+    expect(w.sent.at(-1).text).toMatch(/Unit test 1 \(5 Nov 2026\): Absent/);
+  });
+  it('/marks with no results says so', async () => {
+    const w = world();
+    w.tables.exam_marks.length = 0;
+    await talk('/marks', 111);
+    expect(w.sent.at(-1).text).toMatch(/No test results yet for Asha/);
   });
 });

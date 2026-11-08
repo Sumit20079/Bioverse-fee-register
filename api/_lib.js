@@ -1,5 +1,6 @@
 // Shared by the Telegram functions. Runs on Vercel, never in the browser.
 import { dueList, monthView } from '../src/lib/calc.js';
+import { examStats, num, pct } from '../src/lib/marks.js';
 import { addMonths, monthLabel, monthsText } from '../src/lib/dates.js';
 import { fillTemplate, rupees } from '../src/lib/format.js';
 import { keyboardFor, langOf, paidButton, T } from './_i18n.js';
@@ -306,4 +307,65 @@ export async function saveProof(claim, fileId) {
   if (!up.ok) return false;
   await db('PATCH', `payment_claims?id=eq.${claim.id}`, { proof_path: path });
   return true;
+}
+
+// ---- exam marks ----
+const resultFields = (L, exam, mark, stats) => ({
+  exam: exam.name,
+  date: L.date(exam.held_on),
+  score: num(mark.score),
+  total: num(exam.total),
+  pct: pct(mark.score, exam.total),
+  rank: stats.rank.get(mark.student_id),
+  count: stats.count,
+  high: num(stats.highest),
+});
+
+// Sends each connected parent their child's result, only for marks not sent yet (or changed since). Returns counts.
+export async function sendResults(owner, examId) {
+  const [exam] = await db('GET', `exams?select=*&id=eq.${examId}&owner_id=eq.${owner}`);
+  if (!exam) return { sent: 0, failed: 0, missing: true };
+  const marks = await db('GET', `exam_marks?select=*&exam_id=eq.${examId}&owner_id=eq.${owner}`);
+  const stats = examStats(marks);
+  const students = await db('GET', `students?select=id,name&owner_id=eq.${owner}&batch_id=eq.${exam.batch_id}`);
+  const name = new Map(students.map((s) => [s.id, s.name]));
+  const chats = await db('GET', `parent_chats?select=*&owner_id=eq.${owner}`);
+  const out = { sent: 0, failed: 0, students: 0 };
+  for (const m of marks) {
+    if (m.absent || m.score === null || !name.has(m.student_id)) continue;
+    if (m.sent_at && Number(m.sent_score) === Number(m.score)) continue;
+    const mine = chats.filter((c) => c.student_id === m.student_id);
+    let any = false;
+    for (const c of mine) {
+      const L = T(langOf(c));
+      const r = await sendTelegram(c.chat_id, L.resultMsg({ name: name.get(m.student_id), ...resultFields(L, exam, m, stats) }));
+      if (r.ok) {
+        out.sent += 1;
+        any = true;
+      } else out.failed += 1;
+      if (r.gone) await db('DELETE', `parent_chats?id=eq.${c.id}`);
+    }
+    if (any) {
+      out.students += 1;
+      await db('PATCH', `exam_marks?id=eq.${m.id}`, { sent_score: m.score, sent_at: new Date().toISOString() });
+    }
+  }
+  return out;
+}
+
+// "/marks": the last few test results for this child.
+export async function marksText(chat) {
+  const L = T(langOf(chat));
+  const [st] = await db('GET', `students?select=id,name,batch_id&id=eq.${chat.student_id}`);
+  if (!st) return L.gone;
+  const exams = await db('GET', `exams?select=*&owner_id=eq.${chat.owner_id}&batch_id=eq.${st.batch_id}&order=held_on.desc&limit=5`);
+  const lines = [];
+  for (const e of exams) {
+    const marks = await db('GET', `exam_marks?select=*&exam_id=eq.${e.id}`);
+    const mine = marks.find((m) => m.student_id === st.id);
+    if (!mine) continue;
+    if (mine.absent) lines.push(L.marksAbsent({ exam: e.name, date: L.date(e.held_on) }));
+    else if (mine.score !== null) lines.push(L.marksLine(resultFields(L, e, mine, examStats(marks))));
+  }
+  return lines.length ? `${L.marksTitle(st.name)}\n${lines.join('\n')}` : L.marksNone(st.name);
 }

@@ -5,7 +5,7 @@ export const tgLink = (student) => (student?.tg_token ? `https://t.me/${BOT}?sta
 
 export const teacherLink = (token) => (token ? `https://t.me/${BOT}?start=${token}` : null);
 
-export const DEFAULT_SETTINGS = { mode: 'manual', day: 28, every_days: 3, message: '', receipts: true, warn_days: 0, summary: false, notify_connect: true };
+export const DEFAULT_SETTINGS = { mode: 'manual', day: 28, every_days: 3, message: '', receipts: true, warn_days: 0, summary: false, notify_connect: true, results_auto: false };
 
 // Who is connected on Telegram, as Map(student id -> number of chats). Empty when offline or not set up yet.
 export async function loadLinked() {
