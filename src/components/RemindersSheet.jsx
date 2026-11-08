@@ -120,6 +120,11 @@ export default function RemindersSheet({ onClose, onChanged, flash }) {
             <div className="small" style={{ marginTop: 4 }}>{sample}</div>
           </div>
 
+          <label className="check" style={{ marginBottom: 12 }}>
+            <input type="checkbox" checked={s.receipts !== false} onChange={(e) => set({ receipts: e.target.checked })} />
+            <span>Send a “payment received” message when I record a payment</span>
+          </label>
+
           <button className="btn" disabled={busy} onClick={save}>
             Save
           </button>

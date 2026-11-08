@@ -1,9 +1,15 @@
 // Telegram calls this when a parent messages the bot. "/start <code>" connects that parent to a student.
-import { config, db, ok, sendTelegram } from './_lib.js';
+import { config, db, KEYBOARD, ok, sendTelegram, statusText } from './_lib.js';
 
 const HELP =
   'Hello! This bot sends tuition fee reminders. To connect, open the personal link your teacher sent you and press Start. ' +
-  'Send /stop any time to stop the reminders.';
+  'Send /status to see the fee status, or /stop to stop the reminders.';
+
+const COMMANDS = [
+  { command: 'status', description: 'See fee status' },
+  { command: 'stop', description: 'Stop fee reminders' },
+  { command: 'help', description: 'How this bot works' },
+];
 
 export default async function handler(req, res) {
   const cfg = config();
@@ -17,7 +23,12 @@ export default async function handler(req, res) {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ url: `https://${host}/api/telegram`, secret_token: cfg.webhookSecret, allowed_updates: ['message'] }),
     });
-    return ok(res, await r.json());
+    const cmds = await fetch(`https://api.telegram.org/bot${cfg.botToken}/setMyCommands`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ commands: COMMANDS }),
+    });
+    return ok(res, { webhook: await r.json(), commands: await cmds.json() });
   }
 
   if (!cfg.webhookSecret || req.headers['x-telegram-bot-api-secret-token'] !== cfg.webhookSecret) return ok(res, { error: 'Not allowed' }, 401);
@@ -28,9 +39,15 @@ export default async function handler(req, res) {
     const text = msg.text.trim();
     const who = [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(' ');
 
-    if (/^\/stop\b/i.test(text)) {
+    if (/^\/stop\b/i.test(text) || /^🔕/.test(text)) {
       await db('DELETE', `parent_chats?chat_id=eq.${chatId}`);
       await sendTelegram(chatId, 'Okay, you will not get fee reminders any more. Open your teacher\'s link again any time to reconnect.');
+      return ok(res);
+    }
+    if (/^\/status\b/i.test(text) || /^📊/.test(text)) {
+      const chats = await db('GET', `parent_chats?select=*&chat_id=eq.${chatId}`);
+      if (!chats.length) await sendTelegram(chatId, 'You are not connected yet. Open the personal link your teacher sent you and press Start.');
+      for (const c of chats) await sendTelegram(chatId, await statusText(c), KEYBOARD);
       return ok(res);
     }
     const m = text.match(/^\/start(?:\s+(\w+))?/i);
@@ -41,7 +58,7 @@ export default async function handler(req, res) {
         return ok(res);
       }
       await db('POST', 'parent_chats?on_conflict=student_id,chat_id', { owner_id: student.owner_id, student_id: student.id, chat_id: chatId, chat_name: who }, { prefer: 'resolution=merge-duplicates,return=minimal' });
-      await sendTelegram(chatId, `Connected. You will get tuition fee reminders for ${student.name} here. Send /stop to stop them.`);
+      await sendTelegram(chatId, `Connected. You will get tuition fee reminders for ${student.name} here. Send /status any time to see the fee status, or /stop to stop reminders.`, KEYBOARD);
       return ok(res);
     }
     await sendTelegram(chatId, HELP);

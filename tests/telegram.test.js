@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { dueToday, remindOwner } from '../api/_lib.js';
 import handler from '../api/telegram.js';
 import remind from '../api/remind.js';
+import receipt from '../api/receipt.js';
 
 const T = (date) => ({ today: date, day: Number(date.slice(8)) });
 
@@ -189,5 +190,59 @@ describe('the Telegram webhook', () => {
     const w = world();
     await hit(w, '/stop', 111);
     expect(w.tables.parent_chats.find((c) => c.chat_id === 111)).toBeUndefined();
+  });
+  it('the Stop button works like /stop', async () => {
+    const w = world();
+    await hit(w, '🔕 Stop reminders', 111);
+    expect(w.tables.parent_chats.find((c) => c.chat_id === 111)).toBeUndefined();
+  });
+  it('/status shows what is pending', async () => {
+    const w = world();
+    await hit(w, '/status', 111);
+    expect(w.sent.at(-1).text).toMatch(/Fee status for Asha[\s\S]*Pending:.*₹800/);
+  });
+  it('/status for a paid-up child says so and shows the last payment', async () => {
+    const w = world();
+    await hit(w, '📊 Status', 333);
+    expect(w.sent.at(-1).text).toMatch(/Chitra[\s\S]*All paid up[\s\S]*Last payment: ₹800/);
+  });
+  it('/status from someone not connected asks them to connect', async () => {
+    const w = world();
+    await hit(w, '/status', 999);
+    expect(w.sent.at(-1).text).toMatch(/not connected/);
+  });
+});
+
+describe('payment receipts', () => {
+  const post = (body, jwt = 'teacher-jwt') => {
+    const r = res();
+    return receipt({ method: 'POST', headers: { authorization: `Bearer ${jwt}` }, body }, r).then(() => r);
+  };
+  const month = () => new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 7);
+  it('tells the connected parent', async () => {
+    const w = world();
+    const r = await post({ student_id: 's3', amount: 800, month: month(), batch: 'Class 10', paid_on: '2 Nov 2026' });
+    expect(r.body.sent).toBe(1);
+    expect(w.sent[0]).toMatchObject({ chat: 333 });
+    expect(w.sent[0].text).toMatch(/received the tuition fee of ₹800.*Chitra/);
+  });
+  it('needs the teacher to be logged in', async () => {
+    const w = world();
+    expect((await post({ student_id: 's3', amount: 800, month: month() }, 'nobody')).code).toBe(401);
+    expect(w.sent).toHaveLength(0);
+  });
+  it('can be switched off', async () => {
+    const w = world();
+    w.tables.reminder_settings.push({ owner_id: 'o1', receipts: false });
+    expect((await post({ student_id: 's3', amount: 800, month: month() })).body.sent).toBe(0);
+    expect(w.sent).toHaveLength(0);
+  });
+  it('a waiver (₹0) sends nothing, and nobody else\'s student can be used', async () => {
+    const w = world();
+    expect((await post({ student_id: 's3', amount: 0, month: month() })).body.sent).toBe(0);
+    w.tables.students.push({ id: 'x', owner_id: 'other', batch_id: 'b', name: 'X', joined_month: '2026-01-01', tg_token: 't' });
+    w.tables.parent_chats.push({ id: 'cx', owner_id: 'other', student_id: 'x', chat_id: 5 });
+    expect((await post({ student_id: 'x', amount: 500, month: month() })).body.sent).toBe(0);
+    expect(w.sent).toHaveLength(0);
   });
 });

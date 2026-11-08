@@ -1,7 +1,7 @@
 // Shared by the Telegram functions. Runs on Vercel, never in the browser.
 import { dueList } from '../src/lib/calc.js';
-import { monthsText } from '../src/lib/dates.js';
-import { fillTemplate } from '../src/lib/format.js';
+import { monthLabel, monthsText } from '../src/lib/dates.js';
+import { fillTemplate, receiptText, rupees } from '../src/lib/format.js';
 import { shape } from '../src/lib/shape.js';
 
 const env = (k) => process.env[k] || '';
@@ -55,12 +55,12 @@ export async function loadData(owner) {
   });
 }
 
-export async function sendTelegram(chatId, text) {
+export async function sendTelegram(chatId, text, extra = {}) {
   const { botToken } = config();
   const r = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+    body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true, ...extra }),
   });
   const j = await r.json().catch(() => ({}));
   return { ok: !!j.ok, gone: r.status === 403 || j.error_code === 403, detail: j.description || '' };
@@ -118,4 +118,41 @@ export async function ownerFromToken(jwt) {
   if (!r.ok) return null;
   const u = await r.json();
   return u.id || null;
+}
+
+// Buttons shown under the chat box. Tapping one sends its text, which the webhook understands.
+export const KEYBOARD = { reply_markup: { keyboard: [[{ text: '📊 Status' }, { text: '🔕 Stop reminders' }]], resize_keyboard: true, is_persistent: true } };
+
+// "/status": what this child owes right now, and the last payment.
+export async function statusText(chat) {
+  const data = await loadData(chat.owner_id);
+  const student = data.students.find((s) => s.id === chat.student_id);
+  if (!student) return 'Sorry, this student is not in the register any more.';
+  const t = istNow();
+  const row = dueList(data, t.month).find((d) => d.student.id === student.id);
+  const mine = data.payments.filter((p) => p.student_id === student.id && p.amount > 0).sort((a, b) => (b.paid_on || '').localeCompare(a.paid_on || '') || b.month.localeCompare(a.month));
+  const last = mine[0];
+  const lines = [`Fee status for ${student.name}`];
+  if (row) lines.push(`Pending: ${monthsText(row.months)} · ${rupees(row.amount)}${row.partial ? ' (includes a part payment balance)' : ''}`);
+  else lines.push(`All paid up till ${monthLabel(t.month)} ✅`);
+  if (last) lines.push(`Last payment: ${rupees(last.amount)} for ${monthLabel(last.month)}${last.paid_on ? ` on ${String(last.paid_on).slice(0, 10)}` : ''}`);
+  return lines.join('\n');
+}
+
+// Tells the parents of one student that a payment arrived. Returns how many got it.
+export async function sendReceipt(owner, studentId, { amount, month, balance = 0, paidOn = '', batchName = '' }) {
+  if (!(amount > 0) || !/^\d{4}-\d{2}$/.test(String(month))) return 0;
+  const [st] = await db('GET', `students?select=id,name&id=eq.${studentId}&owner_id=eq.${owner}`);
+  if (!st) return 0;
+  const [cfg] = await db('GET', `reminder_settings?select=receipts&owner_id=eq.${owner}`);
+  if (cfg && cfg.receipts === false) return 0;
+  const chats = await db('GET', `parent_chats?select=*&owner_id=eq.${owner}&student_id=eq.${studentId}`);
+  const text = receiptText({ name: st.name, amount, monthLabel: monthLabel(month), batchName, paidOn, balance, to: 'parent' });
+  let sent = 0;
+  for (const c of chats) {
+    const r = await sendTelegram(c.chat_id, text);
+    if (r.ok) sent += 1;
+    if (r.gone) await db('DELETE', `parent_chats?id=eq.${c.id}`);
+  }
+  return sent;
 }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { backend, exitGuest, isDemo, isGuest, rememberSignedIn, signOutSafe, supabase, sync, wasSignedIn } from './lib/db';
 import SyncPill from './components/SyncPill';
 import RemindersSheet from './components/RemindersSheet';
-import { loadLinked } from './lib/telegram';
+import { loadLinked, sendReceipt } from './lib/telegram';
 import { currentMonth, longDateLabel, monthLabel, monthsBetween, todayISO } from './lib/dates';
 import { dueList, feeOn, monthView, staleSettled, withBatchMove, withFeeChange } from './lib/calc';
 import { download, receiptContact, receiptText, waLink } from './lib/format';
@@ -466,6 +466,7 @@ function Register() {
             const balance = p.settled ? 0 : Math.max(0, feeOn(student, data.allBatches || data.batches, p.month) - others - p.amount);
             act(() => backend.savePayment(p)).then((ok) => {
               if (ok) flash('Payment saved', receiptAction(student, batch, p, balance));
+              if (ok && !isDemo && p.amount > 0) sendReceipt({ student_id: student.id, amount: p.amount, month: p.month, balance, batch: batch.name, paid_on: longDateLabel(p.paid_on) });
             });
             return Promise.resolve(true);
           }}
