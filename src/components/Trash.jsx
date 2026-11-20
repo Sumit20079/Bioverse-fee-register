@@ -12,7 +12,7 @@ export default function Trash({ trash, apps = [], onRestoreApp, onPurgeApp, onRe
   const [armed, setArmed] = useState(null);
   const empty = trash.batches.length === 0 && trash.students.length === 0 && apps.length === 0;
   const people = trash.students.length + trash.batches.reduce((n, t) => n + t.students.length, 0);
-  const items = trash.students.length + trash.batches.length;
+  const items = trash.students.length + trash.batches.length + apps.length;
 
   const Buttons = ({ id, restore, purge }) => (
     <div className="a">
