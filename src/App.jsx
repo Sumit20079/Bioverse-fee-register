@@ -10,7 +10,7 @@ import Admissions from './components/Admissions';
 import ApplicationSheet from './components/ApplicationSheet';
 import ApplicationEdit from './components/ApplicationEdit';
 import EnrollSheet from './components/EnrollSheet';
-import { loadApplications, newApplicantCount, possibleDuplicates, studentFromApplication, updateApplication } from './lib/admissions';
+import { loadApplications, loadDeletedApplications, newApplicantCount, possibleDuplicates, purgeApplication, restoreApplication, studentFromApplication, updateApplication } from './lib/admissions';
 import { claimedStudents, finishClaim, loadLinked, sendReceipt, unreadCount } from './lib/telegram';
 import { currentMonth, longDateLabel, monthLabel, monthsBetween, todayISO } from './lib/dates';
 import { dueList, feeOn, monthView, staleSettled, withBatchMove, withFeeChange } from './lib/calc';
@@ -118,6 +118,8 @@ function Register() {
   const [apps, setApps] = useState(null);
   const [appsError, setAppsError] = useState('');
   const [newApps, setNewApps] = useState(0);
+  const [delApps, setDelApps] = useState([]);
+  const refreshDelApps = useCallback(() => loadDeletedApplications().then(setDelApps), []);
   const [month, setMonth] = useState(currentMonth());
   const [sheet, setSheet] = useState(null);
   const [unread, setUnread] = useState(0);
@@ -330,6 +332,9 @@ function Register() {
   useEffect(() => {
     if (adm) loadApps();
   }, [adm, loadApps]);
+  useEffect(() => {
+    if (!isDemo) refreshDelApps();
+  }, [isDemo, refreshDelApps]);
   // The red number on the Overview row: refreshed when you come back to Overview or switch back to the app.
   useEffect(() => {
     if (apps) setNewApps(apps.filter((a) => a.status === 'new').length);
@@ -485,7 +490,7 @@ function Register() {
           newApps={newApps}
           onTrash={() => setSheet({ type: 'trash' })}
           onAppearance={() => setSheet({ type: 'appearance' })}
-          trashCount={data.trash.batches.length + data.trash.students.length}
+          trashCount={data.trash.batches.length + data.trash.students.length + delApps.length}
           onSignOut={signOutSafe}
         />
       </>
@@ -618,6 +623,16 @@ function Register() {
         onStatus={(st) => patchApp(a.id, { status: st })}
         onNote={(t) => patchApp(a.id, { notes: t })}
         onFollow={(patch) => patchApp(a.id, patch)}
+        onDelete={async () => {
+          const ok = await patchApp(a.id, { deleted_at: new Date().toISOString() });
+          if (ok) {
+            setApps((list) => list.filter((x) => x.id !== a.id));
+            close();
+            flash('Application deleted');
+            refreshDelApps();
+          }
+          return ok;
+        }}
         onEdit={() => setSheet({ type: 'appedit', id: a.id })}
         onEnroll={() => setSheet({ type: 'enroll', id: a.id })}
         flash={flash}
@@ -774,7 +789,7 @@ function Register() {
         onBackup={backup}
         onRestore={() => setSheet({ type: 'restore', from: 'settings' })}
         onTrash={() => setSheet({ type: 'trash', from: 'settings' })}
-        trashCount={data.trash.batches.length + data.trash.students.length}
+        trashCount={data.trash.batches.length + data.trash.students.length + delApps.length}
         isDemo={isDemo}
         isGuest={isGuest}
         onExitDemo={exitGuest}
@@ -817,6 +832,27 @@ function Register() {
     sheetEl = (
       <Trash
         trash={data.trash}
+        apps={delApps}
+        onRestoreApp={async (id) => {
+          try {
+            await restoreApplication(id);
+            flash('Application restored');
+            refreshDelApps();
+            if (apps) loadApps();
+            else newApplicantCount().then(setNewApps);
+          } catch (e) {
+            flash('Could not restore: ' + (e.message || e));
+          }
+        }}
+        onPurgeApp={async (a) => {
+          try {
+            await purgeApplication(a);
+            flash('Deleted forever');
+            refreshDelApps();
+          } catch (e) {
+            flash('Could not delete: ' + (e.message || e));
+          }
+        }}
         onClose={closeBack}
         onRestoreStudent={(id) => act(() => backend.restoreStudents([id]), 'Student restored')}
         onRestoreBatch={(id) => act(() => backend.restoreBatch(id), 'Batch restored')}

@@ -7,10 +7,10 @@ const ago = (iso) => {
 };
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
-export default function Trash({ trash, onRestoreStudent, onRestoreBatch, onPurgeStudent, onPurgeBatch, onRestoreAll, onPurgeAll, onClose }) {
+export default function Trash({ trash, apps = [], onRestoreApp, onPurgeApp, onRestoreStudent, onRestoreBatch, onPurgeStudent, onPurgeBatch, onRestoreAll, onPurgeAll, onClose }) {
   // "Delete forever" needs a second tap on the same row.
   const [armed, setArmed] = useState(null);
-  const empty = trash.batches.length === 0 && trash.students.length === 0;
+  const empty = trash.batches.length === 0 && trash.students.length === 0 && apps.length === 0;
   const people = trash.students.length + trash.batches.reduce((n, t) => n + t.students.length, 0);
   const items = trash.students.length + trash.batches.length;
 
@@ -30,8 +30,8 @@ export default function Trash({ trash, onRestoreStudent, onRestoreBatch, onPurge
   );
 
   return (
-    <Sheet title="Recently deleted" subtitle="Restore brings back the student with all their payments." onClose={onClose}>
-      {empty && <p className="muted">Nothing here. Deleted students and batches show up here.</p>}
+    <Sheet title="Recently deleted" subtitle="Restore brings a student back with all their payments, or an application back to the Admissions list." onClose={onClose}>
+      {empty && <p className="muted">Nothing here. Deleted students, batches and applications show up here.</p>}
 
       {!empty && items > 1 && (
         <div className="trow">
@@ -60,6 +60,16 @@ export default function Trash({ trash, onRestoreStudent, onRestoreBatch, onPurge
             Whole batch · {plural(t.students.length, 'student')} · {plural(t.paymentCount, 'payment')} · deleted {ago(t.deleted_at)}
           </div>
           <Buttons id={t.batch.id} restore={() => onRestoreBatch(t.batch.id)} purge={() => onPurgeBatch(t.batch.id)} />
+        </div>
+      ))}
+
+      {apps.map((a) => (
+        <div className="trow" key={a.id}>
+          <div className="t">{a.student_name}</div>
+          <div className="m">
+            Application {a.admission_id} · Class {a.class} · deleted {ago(a.deleted_at)}
+          </div>
+          <Buttons id={a.id} restore={() => onRestoreApp(a.id)} purge={() => onPurgeApp(a)} />
         </div>
       ))}
 
