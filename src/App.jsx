@@ -6,6 +6,11 @@ import AnnounceSheet from './components/AnnounceSheet';
 import MessagesSheet from './components/MessagesSheet';
 import ClaimsSheet from './components/ClaimsSheet';
 import ExamsSheet from './components/ExamsSheet';
+import Admissions from './components/Admissions';
+import ApplicationSheet from './components/ApplicationSheet';
+import ApplicationEdit from './components/ApplicationEdit';
+import EnrollSheet from './components/EnrollSheet';
+import { loadApplications, newApplicantCount, possibleDuplicates, studentFromApplication, updateApplication } from './lib/admissions';
 import { claimedStudents, finishClaim, loadLinked, sendReceipt, unreadCount } from './lib/telegram';
 import { currentMonth, longDateLabel, monthLabel, monthsBetween, todayISO } from './lib/dates';
 import { dueList, feeOn, monthView, staleSettled, withBatchMove, withFeeChange } from './lib/calc';
@@ -108,6 +113,11 @@ function Register() {
   useEffect(() => (sync ? sync.subscribe(setNet) : undefined), []);
   const [tab, setTab] = useState('overview');
   const [batchId, setBatchId] = useState(null);
+  // Admissions: a screen opened from the Tools list on Overview. Applications are loaded only when it opens.
+  const [adm, setAdm] = useState(false);
+  const [apps, setApps] = useState(null);
+  const [appsError, setAppsError] = useState('');
+  const [newApps, setNewApps] = useState(0);
   const [month, setMonth] = useState(currentMonth());
   const [sheet, setSheet] = useState(null);
   const [unread, setUnread] = useState(0);
@@ -126,8 +136,8 @@ function Register() {
   // the app only ever adds ONE entry, at the tap that leaves the clean Overview. Each Back that still leaves the app
   // "deep" steps one level in the app and then returns to that entry with history.forward(), which has no such limit.
   const nav = useRef({});
-  nav.current = { sheet, batchId, tab };
-  const deep = tab !== 'overview' || !!batchId || !!sheet;
+  nav.current = { sheet, batchId, tab, adm };
+  const deep = tab !== 'overview' || !!batchId || !!sheet || adm;
   const pushed = useRef(false);
   const skipPop = useRef(0);
   useEffect(() => {
@@ -151,7 +161,10 @@ function Register() {
       let stillDeep = true;
       if (n.sheet) {
         setSheet(n.sheet.from === 'settings' ? { type: 'settings' } : null);
-        stillDeep = n.sheet.from === 'settings' || n.tab !== 'overview' || !!n.batchId;
+        stillDeep = n.sheet.from === 'settings' || n.tab !== 'overview' || !!n.batchId || n.adm;
+      } else if (n.adm) {
+        setAdm(false);
+        stillDeep = n.tab !== 'overview';
       } else if (n.batchId) {
         setBatchId(null);
         stillDeep = n.tab !== 'overview';
@@ -184,7 +197,7 @@ function Register() {
     setTab(TAB_ORDER[next]);
     setBatchId(null);
   }, []);
-  useSwipeTabs({ area: appEl, pageRef, enabled: onPhone && tabIndex >= 0 && !batchId && !sheet && !locked, index: tabIndex, count: TAB_ORDER.length, onGo: goSwipe });
+  useSwipeTabs({ area: appEl, pageRef, enabled: onPhone && tabIndex >= 0 && !batchId && !adm && !sheet && !locked, index: tabIndex, count: TAB_ORDER.length, onGo: goSwipe });
   const changeLook = (l) => {
     setLook(l);
     applyLook(l);
@@ -305,6 +318,49 @@ function Register() {
   const view = useMemo(() => (data ? monthView(data, month) : null), [data, month]);
   const dues = useMemo(() => (data ? dueList(data, month) : []), [data, month]);
 
+  const loadApps = useCallback(async () => {
+    if (isDemo) return;
+    try {
+      setApps(await loadApplications());
+      setAppsError('');
+    } catch {
+      setAppsError(navigator.onLine ? 'Couldn’t load applications. Check that supabase/add-admissions.sql has been run in Supabase.' : 'Admissions needs internet. Try again when you are back online.');
+    }
+  }, []);
+  useEffect(() => {
+    if (adm) loadApps();
+  }, [adm, loadApps]);
+  // The red number on the Overview row: refreshed when you come back to Overview or switch back to the app.
+  useEffect(() => {
+    if (apps) setNewApps(apps.filter((a) => a.status === 'new').length);
+  }, [apps]);
+  useEffect(() => {
+    if (isDemo || adm) return undefined;
+    const refresh = () => document.visibilityState === 'visible' && newApplicantCount().then(setNewApps);
+    refresh();
+    const timer = setInterval(refresh, 60000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [adm, tab, sheet?.type]);
+  const dups = useMemo(() => (apps ? possibleDuplicates(apps, data?.students || []) : new Set()), [apps, data]);
+  // A change shows at once; if the server refuses it, the old value comes back.
+  const patchApp = async (id, patch, okMsg) => {
+    const before = apps;
+    setApps((list) => list.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+    try {
+      await updateApplication(id, patch);
+      if (okMsg) flash(okMsg);
+      return true;
+    } catch (e) {
+      setApps(before);
+      flash('Could not save: ' + (e.message || e));
+      return false;
+    }
+  };
+
   if (loadError) {
     return (
       <div className="center">
@@ -331,6 +387,7 @@ function Register() {
     setSwipeDir(null);
     setTab(t);
     setBatchId(null);
+    setAdm(false);
   };
   const detail = batchId ? view.batches.find((b) => b.batch.id === batchId) : null;
 
@@ -370,7 +427,9 @@ function Register() {
 
   let body;
   let fabEl = null;
-  if (tab === 'search') {
+  if (adm && tab === 'overview') {
+    body = <Admissions apps={apps} error={appsError} dups={dups} onRetry={loadApps} onBack={() => setAdm(false)} onOpen={(id) => setSheet({ type: 'application', id })} />;
+  } else if (tab === 'search') {
     body = (
       <Search
         students={data.students}
@@ -422,6 +481,8 @@ function Register() {
           onReport={() => setSheet({ type: 'report' })}
           onBackup={backup}
           onRestoreFile={() => setSheet({ type: 'restore' })}
+          onAdmissions={() => setAdm(true)}
+          newApps={newApps}
           onTrash={() => setSheet({ type: 'trash' })}
           onAppearance={() => setSheet({ type: 'appearance' })}
           trashCount={data.trash.batches.length + data.trash.students.length}
@@ -547,6 +608,64 @@ function Register() {
         onHistory={(s) => setSheet({ type: 'history', studentId: s.id })}
       />
     );
+  } else if (sheet?.type === 'application') {
+    const a = apps?.find((x) => x.id === sheet.id);
+    sheetEl = a ? (
+      <ApplicationSheet
+        app={a}
+        dup={dups.has(a.id)}
+        onClose={close}
+        onStatus={(st) => patchApp(a.id, { status: st })}
+        onNote={(t) => patchApp(a.id, { notes: t })}
+        onEdit={() => setSheet({ type: 'appedit', id: a.id })}
+        onEnroll={() => setSheet({ type: 'enroll', id: a.id })}
+        flash={flash}
+      />
+    ) : null;
+  } else if (sheet?.type === 'enroll') {
+    const a = apps?.find((x) => x.id === sheet.id);
+    sheetEl = a ? (
+      <EnrollSheet
+        app={a}
+        batches={data.batches}
+        month={currentMonth()}
+        dup={dups.has(a.id)}
+        onBack={() => setSheet({ type: 'application', id: a.id })}
+        onClose={() => setSheet({ type: 'application', id: a.id })}
+        onConfirm={async (batchId) => {
+          const batch = data.batches.find((b) => b.id === batchId);
+          if (!batch) return false;
+          // the student first, then the application is marked Enrolled. The student has the application's id,
+          // so if the second step fails, pressing Enroll again fixes it without adding a second student.
+          const added = await act(() => backend.saveStudent(studentFromApplication(a, batchId, currentMonth())));
+          if (!added) return false;
+          const marked = await patchApp(a.id, { status: 'enrolled', student_id: a.id });
+          if (!marked) {
+            flash('Student added, but could not mark the application as enrolled. Press Enroll again.');
+            return false;
+          }
+          flash(`${a.student_name} added to ${batch.name}`);
+          setSheet({ type: 'application', id: a.id });
+          return true;
+        }}
+      />
+    ) : null;
+  } else if (sheet?.type === 'appedit') {
+    const a = apps?.find((x) => x.id === sheet.id);
+    sheetEl = a ? (
+      <ApplicationEdit
+        app={a}
+        onClose={() => setSheet({ type: 'application', id: a.id })}
+        onSave={async (patch) => {
+          const ok = await patchApp(a.id, patch, 'Details saved');
+          if (ok) {
+            loadApps(); // the percentage is worked out by the database
+            setSheet({ type: 'application', id: a.id });
+          }
+          return ok;
+        }}
+      />
+    ) : null;
   } else if (sheet?.type === 'batch') {
     sheetEl = (
       <BatchSheet
@@ -728,7 +847,7 @@ function Register() {
   }
 
   return (
-    <div className={'app' + (onPhone && tabIndex >= 0 && !batchId ? ' swipeable' : '')} ref={setAppEl}>
+    <div className={'app' + (onPhone && tabIndex >= 0 && !batchId && !adm ? ' swipeable' : '')} ref={setAppEl}>
       {locked && lockCfg && (
         <LockScreen
           onUnlock={() => {
@@ -744,7 +863,7 @@ function Register() {
         />
       )}
       {!isDemo && <SyncPill net={net} />}
-      <div className={'screen' + (swipeDir ? ` from-${swipeDir}` : '')} key={`${tab}-${batchId || ''}`} ref={pageRef}>
+      <div className={'screen' + (swipeDir ? ` from-${swipeDir}` : '')} key={`${tab}-${batchId || ''}-${adm ? 'adm' : ''}`} ref={pageRef}>
         <SettingsContext.Provider value={() => setSheet({ type: 'settings' })}>{body}</SettingsContext.Provider>
       </div>
       {fabEl}

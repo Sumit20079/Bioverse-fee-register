@@ -45,5 +45,6 @@ export const Icon = {
   Info: make(<><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></>),
   Backspace: make(<><path d="M21 5H9l-6 7 6 7h12z" /><path d="M13 9.5l5 5m0-5l-5 5" /></>),
   Lock: make(<><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></>),
+  Form: make(<><rect x="5" y="3.5" width="14" height="17" rx="2" /><path d="M9 8h6M9 12h6M9 16h3" /></>),
   Out: make(<path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10" />),
 };
