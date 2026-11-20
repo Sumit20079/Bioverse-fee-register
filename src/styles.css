@@ -728,12 +728,13 @@ input.bright::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; 
 .enroll-batch .txt small { font-size: 13px; color: var(--muted); }
 .enroll-sum { padding-top: 8px; padding-bottom: 8px; }
 
-.name-btn, .row .who { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 
-/* Pressing and holding a button, tab or list row should never start selecting text. Typing fields stay selectable. */
-button, a, label, select, summary, [role='button'], .row, .tool, .chip, .pill, .sbtn, .btn, .nav, .batch-card, .fab, .iconbtn, .adm-card, .trow {
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
+/* Nothing in the app selects text on a long press, except what someone may want to copy: typing fields, phone numbers,
+   admission details, and amounts and dates in the batch table and payment summary. */
+html { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea, [contenteditable],
+.copy, .adm-detail .v, .enroll-sum .v, table td, .hist-sum .v {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
 }
-input, textarea, [contenteditable] { -webkit-user-select: text; user-select: text; }
