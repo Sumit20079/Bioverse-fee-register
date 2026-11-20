@@ -9,7 +9,7 @@ const pretty = (p) => {
   return d.length === 10 ? `${d.slice(0, 5)} ${d.slice(5)}` : p || '';
 };
 
-export default function ApplicationSheet({ app: a, dup, onClose, onStatus, onNote, onEdit, flash }) {
+export default function ApplicationSheet({ app: a, dup, onClose, onStatus, onNote, onEdit, onEnroll, flash }) {
   const [note, setNote] = useState(a.notes || '');
   const [file, setFile] = useState('');
   const [opening, setOpening] = useState(false);
@@ -124,6 +124,9 @@ export default function ApplicationSheet({ app: a, dup, onClose, onStatus, onNot
         <textarea id="adm-note" rows={3} placeholder="Add a note about this applicant" value={note} onChange={(e) => setNote(e.target.value)} onBlur={() => note !== (a.notes || '') && onNote(note)} />
       </div>
 
+      <button type="button" className="btn" onClick={onEnroll} disabled={a.status === 'enrolled'}>
+        {a.status === 'enrolled' ? 'Already enrolled' : 'Enroll'}
+      </button>
       <button type="button" className="btn secondary" onClick={onEdit}>
         Edit details
       </button>

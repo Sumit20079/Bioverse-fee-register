@@ -9,7 +9,8 @@ import ExamsSheet from './components/ExamsSheet';
 import Admissions from './components/Admissions';
 import ApplicationSheet from './components/ApplicationSheet';
 import ApplicationEdit from './components/ApplicationEdit';
-import { loadApplications, newApplicantCount, possibleDuplicates, updateApplication } from './lib/admissions';
+import EnrollSheet from './components/EnrollSheet';
+import { loadApplications, newApplicantCount, possibleDuplicates, studentFromApplication, updateApplication } from './lib/admissions';
 import { claimedStudents, finishClaim, loadLinked, sendReceipt, unreadCount } from './lib/telegram';
 import { currentMonth, longDateLabel, monthLabel, monthsBetween, todayISO } from './lib/dates';
 import { dueList, feeOn, monthView, staleSettled, withBatchMove, withFeeChange } from './lib/calc';
@@ -617,7 +618,36 @@ function Register() {
         onStatus={(st) => patchApp(a.id, { status: st })}
         onNote={(t) => patchApp(a.id, { notes: t })}
         onEdit={() => setSheet({ type: 'appedit', id: a.id })}
+        onEnroll={() => setSheet({ type: 'enroll', id: a.id })}
         flash={flash}
+      />
+    ) : null;
+  } else if (sheet?.type === 'enroll') {
+    const a = apps?.find((x) => x.id === sheet.id);
+    sheetEl = a ? (
+      <EnrollSheet
+        app={a}
+        batches={data.batches}
+        month={currentMonth()}
+        dup={dups.has(a.id)}
+        onBack={() => setSheet({ type: 'application', id: a.id })}
+        onClose={() => setSheet({ type: 'application', id: a.id })}
+        onConfirm={async (batchId) => {
+          const batch = data.batches.find((b) => b.id === batchId);
+          if (!batch) return false;
+          // the student first, then the application is marked Enrolled. The student has the application's id,
+          // so if the second step fails, pressing Enroll again fixes it without adding a second student.
+          const added = await act(() => backend.saveStudent(studentFromApplication(a, batchId, currentMonth())));
+          if (!added) return false;
+          const marked = await patchApp(a.id, { status: 'enrolled', student_id: a.id });
+          if (!marked) {
+            flash('Student added, but could not mark the application as enrolled. Press Enroll again.');
+            return false;
+          }
+          flash(`${a.student_name} added to ${batch.name}`);
+          setSheet({ type: 'application', id: a.id });
+          return true;
+        }}
       />
     ) : null;
   } else if (sheet?.type === 'appedit') {

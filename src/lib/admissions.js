@@ -85,3 +85,18 @@ export function possibleDuplicates(apps, students) {
   for (const a of apps) if (a.status !== 'enrolled' && registered.has(tail10(a.student_phone))) dup.add(a.id);
   return dup;
 }
+
+// The fee-register student made from an application. The student gets the application's own id, so pressing Enroll
+// a second time (after a hiccup) updates the same student instead of adding a second one.
+// Reminders go to the parent the family chose as main contact.
+export function studentFromApplication(a, batchId, month) {
+  return {
+    id: a.id,
+    name: a.student_name.trim(),
+    phone: String(a.student_phone || '').replace(/\D/g, ''),
+    parent_phone: String(mainParent(a).phone || '').replace(/\D/g, ''),
+    batch_id: batchId,
+    joined_month: month,
+    active: true,
+  };
+}
