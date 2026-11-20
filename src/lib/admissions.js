@@ -100,3 +100,8 @@ export function studentFromApplication(a, batchId, month) {
     active: true,
   };
 }
+
+// Follow-ups: applicants who asked for counselling or the scholarship test and haven't had it yet.
+// Dropped applicants are left out of the pending lists.
+export const counsellingPending = (a) => a.wants_counselling && !a.counselling_done && a.status !== 'dropped';
+export const scholarshipPending = (a) => a.wants_scholarship && !a.scholarship_done && a.status !== 'dropped';
