@@ -858,16 +858,41 @@ function Register() {
         onRestoreBatch={(id) => act(() => backend.restoreBatch(id), 'Batch restored')}
         onPurgeStudent={(id) => act(() => backend.purgeStudents([id]), 'Deleted forever')}
         onPurgeBatch={(id) => act(() => backend.purgeBatch(id), 'Deleted forever')}
-        onRestoreAll={() => {
+        onRestoreAll={async () => {
           flash('Restoring…');
-          act(() => backend.restoreTrash(newestInBin(data.trash)), 'Everything restored');
+          const hasBin = data.trash.batches.length + data.trash.students.length > 0;
+          if (hasBin) act(() => backend.restoreTrash(newestInBin(data.trash)), 'Everything restored');
+          if (delApps.length) {
+            try {
+              await Promise.all(delApps.map((a) => restoreApplication(a.id)));
+              if (!hasBin) flash('Everything restored');
+              refreshDelApps();
+              if (apps) loadApps();
+              else newApplicantCount().then(setNewApps);
+            } catch (e) {
+              flash('Could not restore applications: ' + (e.message || e));
+              refreshDelApps();
+            }
+          }
         }}
-        onPurgeAll={() => {
+        onPurgeAll={async () => {
           // empty the list on screen at once; the server catches up behind
+          const hasBin = data.trash.batches.length + data.trash.students.length > 0;
           const upTo = newestInBin(data.trash);
+          const gone = delApps;
           setData((d) => ({ ...d, trash: { batches: [], students: [] } }));
+          setDelApps([]);
           flash('Emptying…');
-          act(() => backend.purgeTrash(upTo), 'Recently deleted emptied');
+          if (hasBin) act(() => backend.purgeTrash(upTo), 'Recently deleted emptied');
+          if (gone.length) {
+            try {
+              await Promise.all(gone.map((a) => purgeApplication(a)));
+              if (!hasBin) flash('Recently deleted emptied');
+            } catch (e) {
+              flash('Could not delete some applications: ' + (e.message || e));
+              refreshDelApps();
+            }
+          }
         }}
       />
     );
