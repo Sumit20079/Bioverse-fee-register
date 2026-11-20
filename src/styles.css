@@ -681,3 +681,38 @@ input.bright::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; 
 .markin.bad { border-color: #c0392b; background: #fdecea; }
 .markin:disabled { opacity: .5; }
 .markabs { display: flex; align-items: center; gap: 4px; font-size: 13px; }
+
+/* ---------- admissions ---------- */
+.tool { position: relative; }
+.tool .tool-badge { margin-left: auto; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px; background: var(--danger); color: #fff; font-size: 12px; font-weight: 700; display: grid; place-items: center; }
+.notice { padding: 10px 14px; border-radius: 12px; background: var(--amber-tint); color: var(--amber-dark); font-size: 13px; }
+.adm-filters { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 20px 4px; }
+.adm-filters select { height: 44px; padding: 0 10px; border: 1px solid var(--field); border-radius: 12px; background: #fff; font-size: 14px; font-weight: 500; color: var(--ink); max-width: 100%; }
+.adm-list { padding-bottom: 96px; }
+.adm-card { display: flex; flex-direction: column; gap: 10px; padding: 14px; }
+.adm-open { display: flex; flex-direction: column; gap: 6px; width: 100%; padding: 0; border: 0; background: transparent; text-align: left; color: var(--ink); }
+.adm-top { display: flex; align-items: center; gap: 8px; width: 100%; }
+.adm-name { font-size: 17px; font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+.adm-line { font-size: 14px; }
+.adm-meta { font-size: 13px; color: var(--muted); }
+.adm-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.adm-tag { padding: 3px 9px; border-radius: 10px; font-size: 12px; font-weight: 600; }
+.adm-tag.coun { background: var(--primary-tint); color: var(--primary-ink); }
+.adm-tag.schol { background: var(--amber-tint); color: var(--amber-dark); }
+.adm-tag.dup { background: #fde1de; color: #8c1d18; }
+.adm-status { margin-left: auto; flex: none; padding: 3px 10px; border-radius: 10px; font-size: 12px; font-weight: 700; }
+.adm-status.new { background: var(--amber-tint); color: var(--amber-dark); }
+.adm-status.counselled { background: var(--primary-tint); color: var(--primary-ink); }
+.adm-status.enrolled { background: var(--primary); color: var(--on-primary); }
+.adm-status.dropped { background: var(--neutral-fill); color: var(--muted); }
+.adm-status.big { margin-left: 0; padding: 8px 16px; border-radius: 12px; font-size: 14px; }
+.adm-actions, .adm-call { display: flex; gap: 8px; }
+.adm-actions .sbtn, .adm-call .sbtn { flex: 1; }
+.adm-seg { display: flex; gap: 8px; flex-wrap: wrap; }
+.adm-detail { display: flex; flex-direction: column; padding: 4px 16px 8px; }
+.adm-detail h3 { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--primary); padding: 14px 0 4px; }
+.adm-row { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.adm-row:last-child { border-bottom: 0; }
+.adm-row .k { flex: none; width: 108px; font-size: 13px; color: var(--muted); }
+.adm-row .v { flex: 1; min-width: 0; font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
+.adm-link { background: none; border: 0; padding: 0; color: var(--primary); font-size: 14px; font-weight: 700; text-decoration: underline; }

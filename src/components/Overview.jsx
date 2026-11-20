@@ -7,7 +7,7 @@ import { feeFor } from '../lib/calc';
 import { rupees } from '../lib/format';
 import { useCountUp } from '../lib/useCountUp';
 
-export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, onNewBatch, onImport, onReport, onBackup, onRestoreFile, onTrash, onAppearance, trashCount, onSignOut }) {
+export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, onNewBatch, onImport, onReport, onBackup, onRestoreFile, onTrash, onAppearance, trashCount, onSignOut, onAdmissions, newApps }) {
   const shownCollected = useCountUp(view.collected);
 
   return (
@@ -94,6 +94,16 @@ export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, o
         <button className="tool" onClick={onImport} disabled={!view.batches.length}>
           <Icon.Upload /> Import students
         </button>
+        {!isDemo && (
+          <button className="tool" onClick={onAdmissions}>
+            <Icon.Form /> Admissions
+            {newApps > 0 && (
+              <span className="tool-badge" aria-label={`${newApps} new applicant${newApps === 1 ? '' : 's'}`}>
+                {newApps}
+              </span>
+            )}
+          </button>
+        )}
       </div>
     </>
   );
