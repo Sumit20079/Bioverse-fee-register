@@ -684,7 +684,7 @@ input.bright::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; 
 
 /* ---------- admissions ---------- */
 .tool { position: relative; }
-.tool .tool-badge { margin-left: auto; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px; background: var(--danger); color: #fff; font-size: 12px; font-weight: 700; display: grid; place-items: center; }
+.tool .tool-badge { margin-left: -4px; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px; background: var(--danger); color: #fff; font-size: 12px; font-weight: 700; display: grid; place-items: center; }
 .notice { padding: 10px 14px; border-radius: 12px; background: var(--amber-tint); color: var(--amber-dark); font-size: 13px; }
 .adm-filters { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 20px 4px; }
 .adm-filters select { flex: 1 1 calc(50% - 4px); min-width: 0; height: 44px; padding: 0 10px; border: 1px solid var(--field); border-radius: 12px; background: #fff; font-size: 14px; font-weight: 500; color: var(--ink); max-width: 100%; }
