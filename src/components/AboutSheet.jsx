@@ -3,6 +3,7 @@ import Sheet from './Sheet';
 const TIPS = [
   ['Put it on your home screen', 'Open the app in Chrome, tap the ⋮ menu, then "Add to Home screen" (or "Install app"). It opens like a normal app after that.'],
   ['Marking fees', 'Tap Mark paid next to a student. For part payments, enter the amount that was given and the balance stays on the Due list until it is settled.'],
+  ['More for a student', 'Press and hold a student’s name in a batch to edit, move to another batch, see payment history, select, or delete.'],
   ['Deleted something by mistake?', 'Deleted students and batches wait in Recently deleted (Settings) until you empty it, and you can bring them back from there.'],
   ['Backups', 'Download a backup now and then. Restoring from a backup only adds back what is missing, it never overwrites anything you have today.'],
   ['Looks are per device', 'Colours and dark mode are saved on each device separately, so every phone or laptop can look different.'],

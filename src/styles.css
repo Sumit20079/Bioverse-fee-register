@@ -727,3 +727,5 @@ input.bright::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; 
 .enroll-batch .txt b { font-size: 16px; font-weight: 600; }
 .enroll-batch .txt small { font-size: 13px; color: var(--muted); }
 .enroll-sum { padding-top: 8px; padding-bottom: 8px; }
+
+.name-btn, .row .who { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }

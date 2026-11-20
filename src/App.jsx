@@ -30,6 +30,7 @@ import BatchSheet from './components/BatchSheet';
 import ImportSheet from './components/ImportSheet';
 import BulkDeleteSheet from './components/BulkDeleteSheet';
 import Trash from './components/Trash';
+import StudentMenu from './components/StudentMenu';
 import RestoreSheet from './components/RestoreSheet';
 import MoveSheet from './components/MoveSheet';
 import Leaving from './components/Leaving';
@@ -461,6 +462,7 @@ function Register() {
         onAddStudent={() => addStudent(detail.batch.id)}
         onDeleteMany={(ids, done) => setSheet({ type: 'bulkdelete', ids, done })}
         onMoveMany={(ids, done) => setSheet({ type: 'move', ids, done })}
+        onStudentMenu={(student, selectThis) => setSheet({ type: 'smenu', student, selectThis })}
       />
     );
   } else if (tab === 'batches') {
@@ -708,6 +710,23 @@ function Register() {
             return undoable(ok, 'Batch deleted', () => backend.restoreBatch(id));
           })
         }
+      />
+    );
+  } else if (sheet?.type === 'smenu' && detail) {
+    const st = sheet.student;
+    sheetEl = (
+      <StudentMenu
+        student={st}
+        batchName={detail.batch.name}
+        onClose={close}
+        onEdit={() => setSheet({ type: 'student', student: st })}
+        onMove={() => setSheet({ type: 'move', ids: [st.id] })}
+        onHistory={() => setSheet({ type: 'history', studentId: st.id })}
+        onSelect={() => {
+          close();
+          sheet.selectThis?.();
+        }}
+        onDelete={() => setSheet({ type: 'bulkdelete', ids: [st.id] })}
       />
     );
   } else if (sheet?.type === 'bulkdelete') {
