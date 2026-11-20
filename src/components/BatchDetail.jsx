@@ -39,12 +39,64 @@ function StatusPill({ status, name, onClick }) {
   );
 }
 
-export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditStudent, onEditBatch, onAddStudent, onDeleteMany, onMoveMany, onTests }) {
+// Press and hold a student's name (or right-click it) to open the menu. A normal tap still opens Edit.
+function useHoldMenu(open) {
+  const t = useRef(null);
+  const start = useRef(null);
+  const fired = useRef(false);
+  const cancel = () => {
+    clearTimeout(t.current);
+    t.current = null;
+  };
+  return (student) => ({
+    onPointerDown: (e) => {
+      fired.current = false;
+      start.current = { x: e.clientX, y: e.clientY };
+      cancel();
+      t.current = setTimeout(() => {
+        fired.current = true;
+        navigator.vibrate?.(15);
+        open(student);
+      }, 500);
+    },
+    onPointerMove: (e) => {
+      const s = start.current;
+      if (t.current && s && Math.hypot(e.clientX - s.x, e.clientY - s.y) > 10) cancel();
+    },
+    onPointerUp: cancel,
+    onPointerCancel: cancel,
+    onPointerLeave: cancel,
+    onContextMenu: (e) => {
+      e.preventDefault();
+      cancel();
+      if (!fired.current) {
+        fired.current = true;
+        open(student);
+      }
+    },
+    // the tap that ends a long press must not also open Edit
+    onClickCapture: (e) => {
+      if (fired.current) {
+        e.stopPropagation();
+        e.preventDefault();
+        fired.current = false;
+      }
+    },
+  });
+}
+
+export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditStudent, onEditBatch, onAddStudent, onDeleteMany, onMoveMany, onTests, onStudentMenu }) {
   const fee = feeFor(v.batch, month);
   const [filter, setFilterRaw] = useState('all');
   const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState(() => new Set());
   const wide = useWide();
+  const hold = useHoldMenu((student) =>
+    onStudentMenu?.(student, () => {
+      setSelecting(true);
+      setPicked(new Set([student.id]));
+    }),
+  );
   const { batch } = v;
   const shownCollected = useCountUp(v.collected);
   const shownPending = useCountUp(v.pending);
@@ -181,7 +233,7 @@ export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditS
                     {selecting ? (
                       <b>{student.name}</b>
                     ) : (
-                      <button className="name-btn" onClick={() => onEditStudent(student)} aria-label={`Edit ${student.name}`}>
+                      <button className="name-btn" onClick={() => onEditStudent(student)} aria-label={`Edit ${student.name}`} {...hold(student)}>
                         {student.name}
                       </button>
                     )}
@@ -234,7 +286,7 @@ export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditS
               </label>
             ) : (
               <div className="row rise" style={{ '--i': i }} key={student.id}>
-                <button className="who" onClick={() => onEditStudent(student)} aria-label={`Edit ${student.name}`}>
+                <button className="who" onClick={() => onEditStudent(student)} aria-label={`Edit ${student.name}`} {...hold(student)}>
                   <div className="n">{student.name}</div>
                   <div className="d">{detail(row)}</div>
                 </button>
