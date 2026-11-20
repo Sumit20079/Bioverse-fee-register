@@ -9,10 +9,12 @@ const pretty = (p) => {
   return d.length === 10 ? `${d.slice(0, 5)} ${d.slice(5)}` : p || '';
 };
 
-export default function ApplicationSheet({ app: a, dup, onClose, onStatus, onNote, onEdit, onEnroll, onFollow, flash }) {
+export default function ApplicationSheet({ app: a, dup, onClose, onStatus, onNote, onEdit, onEnroll, onFollow, onDelete, flash }) {
   const [note, setNote] = useState(a.notes || '');
   const [file, setFile] = useState('');
   const [opening, setOpening] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
   const mp = mainParent(a);
   const call = telLink(mp.phone);
   const wa = waLink(mp.phone, `Hello, this is Bio-Verse regarding ${a.student_name}'s admission (${a.admission_id}).`);
@@ -38,6 +40,30 @@ export default function ApplicationSheet({ app: a, dup, onClose, onStatus, onNot
       ));
   const parent = (name, phone, job) => [name, phone && pretty(phone), job].filter(Boolean).join(' · ');
   const careers = [...(a.careers || []).filter((c) => c !== 'Other'), a.career_other ? `Other: ${a.career_other}` : a.careers?.includes('Other') ? 'Other' : ''].filter(Boolean).join(', ');
+
+  const remove = async () => {
+    setBusy(true);
+    const ok = await onDelete();
+    if (!ok) setBusy(false);
+  };
+
+  if (confirming) {
+    return (
+      <Sheet title="Delete this application?" onClose={onClose}>
+        <p role="alert">
+          <b>{a.student_name}</b> ({a.admission_id}) will move to Recently deleted (Settings). You can restore it from there.
+          {a.status === 'enrolled' ? ' The student stays in the fee register.' : ''}
+        </p>
+        <p className="hint">If they just aren’t joining, cancel and mark them Dropped instead. That keeps the record.</p>
+        <button type="button" className="btn" style={{ background: 'var(--danger)' }} disabled={busy} onClick={remove}>
+          Yes, delete application
+        </button>
+        <button type="button" className="btn secondary" disabled={busy} onClick={() => setConfirming(false)}>
+          Cancel
+        </button>
+      </Sheet>
+    );
+  }
 
   return (
     <Sheet title={a.student_name} subtitle={`${a.admission_id} · ${ago(a.created_at)}`} onClose={onClose}>
@@ -147,6 +173,9 @@ export default function ApplicationSheet({ app: a, dup, onClose, onStatus, onNot
       </button>
       <button type="button" className="btn secondary" onClick={onEdit}>
         Edit details
+      </button>
+      <button type="button" className="btn danger" onClick={() => setConfirming(true)}>
+        Delete application
       </button>
     </Sheet>
   );

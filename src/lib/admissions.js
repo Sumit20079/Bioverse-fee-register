@@ -105,3 +105,24 @@ export function studentFromApplication(a, batchId, month) {
 // Dropped applicants are left out of the pending lists.
 export const counsellingPending = (a) => a.wants_counselling && !a.counselling_done && a.status !== 'dropped';
 export const scholarshipPending = (a) => a.wants_scholarship && !a.scholarship_done && a.status !== 'dropped';
+
+// Deleted applications wait here (like deleted students) until restored or deleted forever.
+// Quietly empty when offline or the table isn't there.
+export async function loadDeletedApplications() {
+  if (!supabase || (typeof navigator !== 'undefined' && navigator.onLine === false)) return [];
+  const { data, error } = await supabase
+    .from('applications')
+    .select('id, admission_id, student_name, class, status, marksheet_path, deleted_at')
+    .not('deleted_at', 'is', null)
+    .order('deleted_at', { ascending: false })
+    .limit(500);
+  return error ? [] : data;
+}
+
+export const restoreApplication = (id) => updateApplication(id, { deleted_at: null });
+
+// Delete forever: the row and its marksheet file.
+export async function purgeApplication(a) {
+  check(await supabase.from('applications').delete().eq('id', a.id));
+  if (a.marksheet_path) await supabase.storage.from('marksheets').remove([a.marksheet_path]).catch(() => {});
+}
