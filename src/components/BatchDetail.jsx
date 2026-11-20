@@ -223,6 +223,7 @@ export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditS
                   className={'rise' + (selecting ? ' selectable' : '') + (picked.has(student.id) ? ' picked' : '')}
                   style={{ '--i': i }}
                   onClick={selecting ? () => toggle(student.id) : undefined}
+                  {...(selecting ? {} : hold(student))}
                 >
                   {selecting && (
                     <td className="pick">
@@ -233,7 +234,7 @@ export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditS
                     {selecting ? (
                       <b>{student.name}</b>
                     ) : (
-                      <button className="name-btn" onClick={() => onEditStudent(student)} aria-label={`Edit ${student.name}`} {...hold(student)}>
+                      <button className="name-btn" onClick={() => onEditStudent(student)} aria-label={`Edit ${student.name}`}>
                         {student.name}
                       </button>
                     )}
@@ -285,8 +286,8 @@ export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditS
                 </span>
               </label>
             ) : (
-              <div className="row rise" style={{ '--i': i }} key={student.id}>
-                <button className="who" onClick={() => onEditStudent(student)} aria-label={`Edit ${student.name}`} {...hold(student)}>
+              <div className="row rise" style={{ '--i': i }} key={student.id} {...hold(student)}>
+                <button className="who" onClick={() => onEditStudent(student)} aria-label={`Edit ${student.name}`}>
                   <div className="n">{student.name}</div>
                   <div className="d">{detail(row)}</div>
                 </button>
