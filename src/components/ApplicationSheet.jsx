@@ -9,7 +9,7 @@ const pretty = (p) => {
   return d.length === 10 ? `${d.slice(0, 5)} ${d.slice(5)}` : p || '';
 };
 
-export default function ApplicationSheet({ app: a, dup, onClose, onStatus, onNote, onEdit, onEnroll, flash }) {
+export default function ApplicationSheet({ app: a, dup, onClose, onStatus, onNote, onEdit, onEnroll, onFollow, flash }) {
   const [note, setNote] = useState(a.notes || '');
   const [file, setFile] = useState('');
   const [opening, setOpening] = useState(false);
@@ -68,6 +68,24 @@ export default function ApplicationSheet({ app: a, dup, onClose, onStatus, onNot
           </div>
         )}
       </div>
+
+      {(a.wants_counselling || a.wants_scholarship) && (
+        <div className="field">
+          <span className="lbl">Follow-up</span>
+          {a.wants_counselling && (
+            <label className="check">
+              <input type="checkbox" checked={!!a.counselling_done} onChange={(e) => onFollow({ counselling_done: e.target.checked })} />
+              Counselling done
+            </label>
+          )}
+          {a.wants_scholarship && (
+            <label className="check">
+              <input type="checkbox" checked={!!a.scholarship_done} onChange={(e) => onFollow({ scholarship_done: e.target.checked })} />
+              Scholarship test done
+            </label>
+          )}
+        </div>
+      )}
 
       <div className="card adm-detail">
         <h3>Student</h3>

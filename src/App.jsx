@@ -617,6 +617,7 @@ function Register() {
         onClose={close}
         onStatus={(st) => patchApp(a.id, { status: st })}
         onNote={(t) => patchApp(a.id, { notes: t })}
+        onFollow={(patch) => patchApp(a.id, patch)}
         onEdit={() => setSheet({ type: 'appedit', id: a.id })}
         onEnroll={() => setSheet({ type: 'enroll', id: a.id })}
         flash={flash}
