@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import SettingsBtn from './SettingsBtn';
 import { Icon } from './Icons';
-import { ago, counsellingPending, mainParent, resultText, scholarshipPending, STATUS_LABEL } from '../lib/admissions';
+import { ago, copyText, counsellingPending, FORM_URL, formShareText, shareForm, mainParent, resultText, scholarshipPending, STATUS_LABEL } from '../lib/admissions';
 import { telLink, waLink } from '../lib/format';
 
 const CLASSES = ['5', '6', '7', '8', '9', '10', '11', '12', 'Dropper', '11+NEET', '12+NEET'];
@@ -14,7 +14,32 @@ const FILTERS = [
   ['dropped', 'Dropped'],
 ];
 
-export default function Admissions({ apps, error, dups, onRetry, onBack, onOpen }) {
+function FormLink({ flash }) {
+  const copy = async () => flash((await copyText(FORM_URL)) ? 'Link copied' : 'Couldn’t copy. Press and hold the link to copy it.');
+  const share = async () => {
+    const r = await shareForm();
+    // no share sheet on this device (e.g. a laptop): open WhatsApp with the message ready instead
+    if (r === 'unsupported') window.open(`https://wa.me/?text=${encodeURIComponent(formShareText())}`, '_blank', 'noopener');
+  };
+  return (
+    <div className="card form-link">
+      <div className="lbl">Admission form for students</div>
+      <a className="copy url" href={FORM_URL} target="_blank" rel="noreferrer">
+        {FORM_URL.replace(/^https?:\/\//, '')}
+      </a>
+      <div className="adm-call">
+        <button type="button" className="sbtn" onClick={copy}>
+          <Icon.Copy /> Copy link
+        </button>
+        <button type="button" className="sbtn primary" onClick={share}>
+          <Icon.Share /> Share
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function Admissions({ apps, error, dups, onRetry, onBack, onOpen, flash }) {
   const [filter, setFilter] = useState('all');
   const [q, setQ] = useState('');
   const [cls, setCls] = useState('');
@@ -69,6 +94,10 @@ export default function Admissions({ apps, error, dups, onRetry, onBack, onOpen 
         </div>
         <SettingsBtn />
       </header>
+
+      <div style={{ padding: '0 20px' }}>
+        <FormLink flash={flash} />
+      </div>
 
       {error && (
         <div className="card empty" style={{ marginInline: 20, marginTop: 12 }}>

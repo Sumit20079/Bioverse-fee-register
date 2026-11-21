@@ -449,7 +449,7 @@ function Register() {
       />
     );
   } else if (adm && tab === 'overview') {
-    body = <Admissions apps={apps} error={appsError} dups={dups} onRetry={loadApps} onBack={() => setAdm(false)} onOpen={(id) => setSheet({ type: 'application', id })} />;
+    body = <Admissions apps={apps} error={appsError} dups={dups} onRetry={loadApps} onBack={() => setAdm(false)} onOpen={(id) => setSheet({ type: 'application', id })} flash={flash} />;
   } else if (tab === 'search') {
     body = (
       <Search

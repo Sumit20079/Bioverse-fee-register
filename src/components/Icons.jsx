@@ -47,5 +47,7 @@ export const Icon = {
   Lock: make(<><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></>),
   Form: make(<><rect x="5" y="3.5" width="14" height="17" rx="2" /><path d="M9 8h6M9 12h6M9 16h3" /></>),
   Chart: make(<path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />),
+  Copy: make(<><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /></>),
+  Share: make(<><circle cx="6" cy="12" r="2.5" /><circle cx="18" cy="6" r="2.5" /><circle cx="18" cy="18" r="2.5" /><path d="M8.2 10.8l7.6-3.6M8.2 13.2l7.6 3.6" /></>),
   Out: make(<path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10" />),
 };
