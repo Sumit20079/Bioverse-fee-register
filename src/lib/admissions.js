@@ -192,3 +192,39 @@ export function monthlyRows(filtered, all, now = new Date(), max = 24) {
   }
   return rows;
 }
+
+// The public admission form students fill in. Override with VITE_ADMISSION_FORM_URL if it ever moves (e.g. a custom domain).
+export const FORM_URL = import.meta.env?.VITE_ADMISSION_FORM_URL || 'https://bioverse-admission-form.vercel.app';
+export const formShareText = (url = FORM_URL) => `Apply to Bio-Verse by filling in this admission form: ${url}`;
+
+export async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const t = document.createElement('textarea');
+      t.value = text;
+      t.setAttribute('readonly', '');
+      t.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+      document.body.appendChild(t);
+      t.select();
+      const ok = document.execCommand('copy');
+      t.remove();
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
+// Opens the phone's share sheet. Returns 'shared' | 'cancelled' | 'unsupported'.
+export async function shareForm(url = FORM_URL) {
+  if (typeof navigator === 'undefined' || !navigator.share) return 'unsupported';
+  try {
+    await navigator.share({ title: 'Bio-Verse admission form', text: 'Apply to Bio-Verse by filling in this admission form.', url });
+    return 'shared';
+  } catch (e) {
+    return e?.name === 'AbortError' ? 'cancelled' : 'unsupported';
+  }
+}

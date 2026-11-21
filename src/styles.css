@@ -763,3 +763,9 @@ input, textarea, [contenteditable],
 .st-tr .d { color: var(--danger); }
 .st-tr .z { color: var(--muted); font-weight: 500; }
 .st-note { margin: 8px 20px 24px; }
+
+/* Admission form link card */
+.form-link { margin: 12px 0 4px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.form-link .lbl { font-size: 13px; color: var(--muted); }
+.form-link .url { font-size: 16px; font-weight: 600; color: var(--primary); word-break: break-all; text-decoration: none; }
+.form-link .adm-call { margin-top: 4px; }
