@@ -43,3 +43,48 @@ describe('possible duplicates', () => {
     expect(possibleDuplicates([app({ status: 'enrolled' })], [{ phone: '9000000001' }]).size).toBe(0);
   });
 });
+
+import { bandOf, filterApplications, monthlyRows, NO_FILTERS, totals } from '../src/lib/admissions';
+describe('admission stats', () => {
+  const mk = (o) => ({ status: 'new', class: '10', batch_location: 'Habra', referred_from: 'Friend', result_total: 100, result_percent: 75, created_at: '2026-11-10T10:00:00Z', ...o });
+  const apps = [
+    mk({ status: 'enrolled', result_percent: 85 }),
+    mk({ status: 'enrolled', class: '12', batch_location: 'Jaguli', referred_from: 'Teacher', result_percent: 92 }),
+    mk({ status: 'dropped', created_at: '2026-10-05T10:00:00Z', result_percent: 45 }),
+    mk({ status: 'counselled', class: 'Dropper', result_total: 720, result_percent: 9.6, created_at: '2026-09-01T10:00:00Z' }),
+    mk({}),
+  ];
+  const now = new Date('2026-11-21T10:00:00');
+  it('totals applied, enrolled, dropped and the rate', () => {
+    expect(totals(apps)).toEqual({ applied: 5, enrolled: 2, dropped: 1, rate: 40 });
+    expect(totals([])).toEqual({ applied: 0, enrolled: 0, dropped: 0, rate: 0 });
+  });
+  it('lists every month from the first application to now, newest first', () => {
+    const rows = monthlyRows(apps, apps, now);
+    expect(rows.map((r) => r.label)).toEqual(['Nov 2026', 'Oct 2026', 'Sept 2026']);
+    expect(rows[0]).toMatchObject({ applied: 3, enrolled: 2, dropped: 0 });
+    expect(rows[1]).toMatchObject({ applied: 1, enrolled: 0, dropped: 1 });
+    expect(rows[2]).toMatchObject({ applied: 1, enrolled: 0, dropped: 0 });
+  });
+  it('keeps the month range when filters hide everything in a month', () => {
+    const only12 = filterApplications(apps, { ...NO_FILTERS, class: ['12'] });
+    const rows = monthlyRows(only12, apps, now);
+    expect(rows).toHaveLength(3);
+    expect(rows[0].applied).toBe(1);
+    expect(rows[1].applied).toBe(0);
+  });
+  it('filters: several picks in one group are OR, different groups are AND', () => {
+    expect(filterApplications(apps, { ...NO_FILTERS, class: ['10', '12'] })).toHaveLength(4);
+    expect(filterApplications(apps, { ...NO_FILTERS, class: ['10', '12'], location: ['Jaguli'] })).toHaveLength(1);
+    expect(filterApplications(apps, { ...NO_FILTERS, referred: ['Teacher'] })).toHaveLength(1);
+    expect(filterApplications(apps, NO_FILTERS)).toHaveLength(5);
+  });
+  it('result bands, with NEET marks as their own group', () => {
+    expect(bandOf(mk({ result_percent: 45 }))).toBe('Below 50%');
+    expect(bandOf(mk({ result_percent: 80 }))).toBe('80–89%');
+    expect(bandOf(mk({ result_percent: 90 }))).toBe('90%+');
+    expect(bandOf(mk({ result_total: 720, result_percent: 75 }))).toBe('NEET marks (out of 720)');
+    expect(filterApplications(apps, { ...NO_FILTERS, result: ['NEET marks (out of 720)'] })).toHaveLength(1);
+    expect(filterApplications(apps, { ...NO_FILTERS, result: ['80–89%', '90%+'] })).toHaveLength(2);
+  });
+});

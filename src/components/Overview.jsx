@@ -7,7 +7,7 @@ import { feeFor } from '../lib/calc';
 import { rupees } from '../lib/format';
 import { useCountUp } from '../lib/useCountUp';
 
-export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, onNewBatch, onImport, onReport, onBackup, onRestoreFile, onTrash, onAppearance, trashCount, onSignOut, onAdmissions, newApps }) {
+export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, onNewBatch, onImport, onReport, onBackup, onRestoreFile, onTrash, onAppearance, trashCount, onSignOut, onAdmissions, onAdmissionStats, newApps }) {
   const shownCollected = useCountUp(view.collected);
 
   return (
@@ -102,6 +102,11 @@ export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, o
                 {newApps}
               </span>
             )}
+          </button>
+        )}
+        {!isDemo && (
+          <button className="tool" onClick={onAdmissionStats}>
+            <Icon.Chart /> Admission stats
           </button>
         )}
       </div>
