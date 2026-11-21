@@ -126,3 +126,69 @@ export async function purgeApplication(a) {
   check(await supabase.from('applications').delete().eq('id', a.id));
   if (a.marksheet_path) await supabase.storage.from('marksheets').remove([a.marksheet_path]).catch(() => {});
 }
+
+// ---- Admission stats --------------------------------------------------------------------------------------------
+// Counted by the month the application came in. "Enrolled" and "Dropped" are the application's status.
+export const CLASS_ORDER = ['5', '6', '7', '8', '9', '10', '11', '12', 'Dropper', '11+NEET', '12+NEET'];
+export const LOCATION_ORDER = ['Habra', 'Jaguli', 'Haringhata', 'Gobardanga', 'Nahata'];
+export const REFERRED_ORDER = ['Teacher', 'Student', 'Friend', 'Senior', 'Social media', 'Other'];
+export const SCORE_BANDS = [
+  ['Below 50%', 0, 50],
+  ['50–59%', 50, 60],
+  ['60–69%', 60, 70],
+  ['70–79%', 70, 80],
+  ['80–89%', 80, 90],
+  ['90%+', 90, Infinity],
+];
+// Droppers give NEET marks out of 720, which can't be compared with a percentage, so they get a group of their own.
+export const NEET_MARKS = 'NEET marks (out of 720)';
+export const bandOf = (a) => {
+  if (Number(a.result_total) === 720) return NEET_MARKS;
+  const p = Number(a.result_percent);
+  if (!Number.isFinite(p)) return '';
+  return (SCORE_BANDS.find(([, lo, hi]) => p >= lo && p < hi) || [''])[0];
+};
+
+export const STAT_FILTERS = {
+  class: { label: 'Class', options: CLASS_ORDER, get: (a) => a.class },
+  location: { label: 'Location', options: LOCATION_ORDER, get: (a) => a.batch_location },
+  result: { label: 'Result', options: [...SCORE_BANDS.map((b) => b[0]), NEET_MARKS], get: bandOf },
+  referred: { label: 'Referred from', options: REFERRED_ORDER, get: (a) => a.referred_from },
+};
+export const NO_FILTERS = { class: [], location: [], result: [], referred: [] };
+
+// An application stays in when, for every filter that has something picked, it matches one of the picks.
+export function filterApplications(apps, sel) {
+  return apps.filter((a) => Object.entries(STAT_FILTERS).every(([k, f]) => !sel[k]?.length || sel[k].includes(f.get(a))));
+}
+
+export function totals(apps) {
+  const t = { applied: apps.length, enrolled: 0, dropped: 0 };
+  for (const a of apps) {
+    if (a.status === 'enrolled') t.enrolled += 1;
+    if (a.status === 'dropped') t.dropped += 1;
+  }
+  return { ...t, rate: t.applied ? Math.round((t.enrolled / t.applied) * 100) : 0 };
+}
+
+// One row per month, newest first, from the first application ever received up to now (at most 24 months).
+// The range comes from all applications, so it doesn't jump around when filters change.
+export function monthlyRows(filtered, all, now = new Date(), max = 24) {
+  const key = (d) => d.getFullYear() * 12 + d.getMonth();
+  const first = all.length ? Math.min(...all.map((a) => key(new Date(a.created_at)))) : key(now);
+  const last = key(now);
+  const rows = [];
+  for (let k = last; k >= Math.max(first, last - max + 1); k--) {
+    const d = new Date(Math.floor(k / 12), k % 12, 1);
+    rows.push({ k, label: d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }), applied: 0, enrolled: 0, dropped: 0 });
+  }
+  const byKey = new Map(rows.map((r) => [r.k, r]));
+  for (const a of filtered) {
+    const r = byKey.get(key(new Date(a.created_at)));
+    if (!r) continue;
+    r.applied += 1;
+    if (a.status === 'enrolled') r.enrolled += 1;
+    if (a.status === 'dropped') r.dropped += 1;
+  }
+  return rows;
+}

@@ -7,10 +7,12 @@ import MessagesSheet from './components/MessagesSheet';
 import ClaimsSheet from './components/ClaimsSheet';
 import ExamsSheet from './components/ExamsSheet';
 import Admissions from './components/Admissions';
+import AdmissionStats from './components/AdmissionStats';
+import StatFilterSheet from './components/StatFilterSheet';
 import ApplicationSheet from './components/ApplicationSheet';
 import ApplicationEdit from './components/ApplicationEdit';
 import EnrollSheet from './components/EnrollSheet';
-import { loadApplications, loadDeletedApplications, newApplicantCount, possibleDuplicates, purgeApplication, restoreApplication, studentFromApplication, updateApplication } from './lib/admissions';
+import { NO_FILTERS, STAT_FILTERS, loadApplications, loadDeletedApplications, newApplicantCount, possibleDuplicates, purgeApplication, restoreApplication, studentFromApplication, updateApplication } from './lib/admissions';
 import { claimedStudents, finishClaim, loadLinked, sendReceipt, unreadCount } from './lib/telegram';
 import { currentMonth, longDateLabel, monthLabel, monthsBetween, todayISO } from './lib/dates';
 import { dueList, feeOn, monthView, staleSettled, withBatchMove, withFeeChange } from './lib/calc';
@@ -116,6 +118,7 @@ function Register() {
   const [batchId, setBatchId] = useState(null);
   // Admissions: a screen opened from the Tools list on Overview. Applications are loaded only when it opens.
   const [adm, setAdm] = useState(false);
+  const [statFilters, setStatFilters] = useState(NO_FILTERS);
   const [apps, setApps] = useState(null);
   const [appsError, setAppsError] = useState('');
   const [newApps, setNewApps] = useState(0);
@@ -433,7 +436,19 @@ function Register() {
 
   let body;
   let fabEl = null;
-  if (adm && tab === 'overview') {
+  if (adm === 'stats' && tab === 'overview') {
+    body = (
+      <AdmissionStats
+        apps={apps}
+        error={appsError}
+        filters={statFilters}
+        onFilter={(k) => setSheet({ type: 'statfilter', key: k })}
+        onClear={() => setStatFilters(NO_FILTERS)}
+        onRetry={loadApps}
+        onBack={() => setAdm(false)}
+      />
+    );
+  } else if (adm && tab === 'overview') {
     body = <Admissions apps={apps} error={appsError} dups={dups} onRetry={loadApps} onBack={() => setAdm(false)} onOpen={(id) => setSheet({ type: 'application', id })} />;
   } else if (tab === 'search') {
     body = (
@@ -489,6 +504,7 @@ function Register() {
           onBackup={backup}
           onRestoreFile={() => setSheet({ type: 'restore' })}
           onAdmissions={() => setAdm(true)}
+          onAdmissionStats={() => setAdm('stats')}
           newApps={newApps}
           onTrash={() => setSheet({ type: 'trash' })}
           onAppearance={() => setSheet({ type: 'appearance' })}
@@ -727,6 +743,23 @@ function Register() {
           sheet.selectThis?.();
         }}
         onDelete={() => setSheet({ type: 'bulkdelete', ids: [st.id] })}
+      />
+    );
+  } else if (sheet?.type === 'statfilter' && apps) {
+    const k = sheet.key;
+    const f = STAT_FILTERS[k];
+    const counts = {};
+    // the number next to each option = how many applicants it would match with the OTHER filters applied
+    const others = apps.filter((a) => Object.entries(STAT_FILTERS).every(([kk, ff]) => kk === k || !statFilters[kk].length || statFilters[kk].includes(ff.get(a))));
+    for (const a of others) counts[f.get(a)] = (counts[f.get(a)] || 0) + 1;
+    sheetEl = (
+      <StatFilterSheet
+        filterKey={k}
+        selected={statFilters[k]}
+        counts={counts}
+        onToggle={(o) => setStatFilters((p) => ({ ...p, [k]: p[k].includes(o) ? p[k].filter((x) => x !== o) : [...p[k], o] }))}
+        onClearOne={() => setStatFilters((p) => ({ ...p, [k]: [] }))}
+        onClose={close}
       />
     );
   } else if (sheet?.type === 'bulkdelete') {
