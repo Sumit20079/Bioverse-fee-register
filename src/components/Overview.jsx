@@ -7,7 +7,7 @@ import { feeFor } from '../lib/calc';
 import { rupees } from '../lib/format';
 import { useCountUp } from '../lib/useCountUp';
 
-export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, onNewBatch, onImport, onReport, onBackup, onRestoreFile, onTrash, onAppearance, trashCount, onSignOut, onAdmissions, onAdmissionStats, newApps }) {
+export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, onNewBatch, onImport, onReport, onBackup, onRestoreFile, onTrash, onAppearance, trashCount, onSignOut, onAdmissions, onAdmissionStats, onPaid, onDue, newApps }) {
   const shownCollected = useCountUp(view.collected);
 
   return (
@@ -39,9 +39,15 @@ export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, o
           <Donut collected={view.collected} pending={view.pending} />
         </div>
         <div className="stats">
-          <span>{view.paidCount} paid</span>
-          <span>{view.dueCount} due</span>
-          <span>{rupees(view.pending)} pending</span>
+          <button type="button" className="stat-link" onClick={onPaid} disabled={!view.paidCount} aria-label={`${view.paidCount} paid. Show who.`}>
+            {view.paidCount} paid
+          </button>
+          <button type="button" className="stat-link" onClick={onDue} disabled={!view.dueCount} aria-label={`${view.dueCount} due. Show who.`}>
+            {view.dueCount} due
+          </button>
+          <button type="button" className="stat-link" onClick={onDue} disabled={!view.dueCount} aria-label={`${rupees(view.pending)} pending. Show who.`}>
+            {rupees(view.pending)} pending
+          </button>
         </div>
       </section>
 
@@ -60,7 +66,15 @@ export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, o
       ) : (
         <div className="stack pad batch-grid">
           {view.batches.map((v, i) => (
-            <button key={v.batch.id} className="card batch-card rise" style={{ '--i': i }} onClick={() => onOpenBatch(v.batch.id)}>
+            <div
+              key={v.batch.id}
+              role="button"
+              tabIndex={0}
+              className="card batch-card rise"
+              style={{ '--i': i }}
+              onClick={() => onOpenBatch(v.batch.id)}
+              onKeyDown={(e) => e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onOpenBatch(v.batch.id))}
+            >
               <div className="top">
                 <div>
                   <div className="name">{v.batch.name}</div>
@@ -74,12 +88,21 @@ export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, o
                 <i style={{ width: `${v.total ? (v.paidCount / v.total) * 100 : 0}%` }} />
               </div>
               <div className="foot">
-                <span>
+                <button
+                  type="button"
+                  className="stat-link"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenBatch(v.batch.id, 'paid');
+                  }}
+                  disabled={!v.paidCount}
+                  aria-label={`${v.paidCount} of ${v.total} paid in ${v.batch.name}. Show who.`}
+                >
                   {v.paidCount} of {v.total} paid
-                </span>
+                </button>
                 <b>{rupees(v.collected)} collected</b>
               </div>
-            </button>
+            </div>
           ))}
         </div>
       )}

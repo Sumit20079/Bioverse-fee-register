@@ -3,7 +3,7 @@ import { dateLabel, monthLabel } from '../lib/dates';
 import { feeFor } from '../lib/calc';
 import { download, rupees, toCsv } from '../lib/format';
 
-export default function Report({ view, month, onClose }) {
+export default function Report({ view, month, onClose, onOpenBatch }) {
   function exportCsv() {
     const rows = [['Batch', 'Student', 'Student phone', 'Parent phone', 'Month', 'Status', 'Amount received', 'Balance due', 'Date paid', 'Note']];
     for (const v of view.batches) {
@@ -71,7 +71,17 @@ export default function Report({ view, month, onClose }) {
                   ))}
                   <tr className="tot">
                     <td colSpan={3}>
-                      Collected ({v.paidCount} of {v.total})
+                      <button type="button" className="rep-link" disabled={!v.paidCount} onClick={() => onOpenBatch?.(v.batch.id, 'paid')}>
+                        Collected ({v.paidCount} of {v.total})
+                      </button>
+                      {v.dueCount > 0 && (
+                        <>
+                          {' · '}
+                          <button type="button" className="rep-link" onClick={() => onOpenBatch?.(v.batch.id, 'due')}>
+                            Due {v.dueCount}
+                          </button>
+                        </>
+                      )}
                     </td>
                     <td className="num">{rupees(v.collected)}</td>
                   </tr>

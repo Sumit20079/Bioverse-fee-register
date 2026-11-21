@@ -771,3 +771,30 @@ input, textarea, [contenteditable],
 .form-link .lbl { font-size: 13px; color: var(--muted); }
 .form-link .url { font-size: 16px; font-weight: 600; color: var(--primary); word-break: break-all; text-decoration: none; }
 .form-link .adm-call { margin-top: 4px; }
+
+/* Tappable stats numbers */
+.st-box { border: 0; font: inherit; color: inherit; cursor: pointer; }
+.st-box:disabled { cursor: default; opacity: .75; }
+.st-box:not(:disabled):active { transform: scale(.97); }
+.st-sum .st-box { background: var(--primary-tint); border-radius: 18px; padding: 14px 8px; text-align: center; display: flex; flex-direction: column; gap: 2px; }
+.st-box.e b { color: var(--primary); }
+.st-box.d b { color: var(--danger); }
+.st-cell { width: 100%; min-height: 44px; border: 0; background: transparent; font: inherit; font-weight: 700; color: inherit; text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: 4px; }
+.st-tr span.go { padding: 0; }
+.st-tr span.go .st-cell { padding: 12px 0; }
+
+/* Tappable figures */
+.stat-link { background: none; border: 0; padding: 4px 2px; margin: -4px -2px; font: inherit; color: inherit; text-align: inherit; text-decoration: underline; text-decoration-style: dotted; text-decoration-thickness: 1px; text-underline-offset: 4px; cursor: pointer; }
+.stat-link:disabled { text-decoration: none; cursor: default; }
+.stat-link:not(:disabled):active { opacity: .6; }
+.batch-card { cursor: pointer; }
+.batch-card .foot .stat-link { color: var(--muted); }
+.summary .sum-btn { background: none; border: 0; padding: 4px 6px; margin: -4px -6px; font: inherit; color: inherit; text-align: left; border-radius: 12px; cursor: pointer; }
+.summary .sum-btn.r { text-align: right; }
+.summary .sum-btn:disabled { cursor: default; }
+.summary .sum-btn[aria-pressed='true'] { background: var(--primary-tint); }
+.summary .sum-btn .v { text-decoration: underline; text-decoration-style: dotted; text-decoration-thickness: 1px; text-underline-offset: 5px; }
+.summary .sum-btn:disabled .v { text-decoration: none; }
+.rep-link { background: none; border: 0; padding: 0; font: inherit; color: inherit; font-weight: inherit; text-decoration: underline; text-decoration-style: dotted; cursor: pointer; }
+.rep-link:disabled { text-decoration: none; cursor: default; }
+@media print { .rep-link { text-decoration: none; } }
