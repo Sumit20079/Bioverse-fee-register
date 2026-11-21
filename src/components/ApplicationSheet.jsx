@@ -38,7 +38,15 @@ export default function ApplicationSheet({ app: a, dup, onClose, onStatus, onNot
           <span className="v">{v}</span>
         </div>
       ));
-  const parent = (name, phone, job) => [name, phone && pretty(phone), job].filter(Boolean).join(' · ');
+  // name, phone and profession each on their own line, so a phone number is never split across two lines
+  const parent = (name, phone, job) =>
+    name || phone || job ? (
+      <span className="adm-lines">
+        {name && <span>{name}</span>}
+        {phone && <span className="nw">{pretty(phone)}</span>}
+        {job && <span className="muted">{job}</span>}
+      </span>
+    ) : null;
   const careers = [...(a.careers || []).filter((c) => c !== 'Other'), a.career_other ? `Other: ${a.career_other}` : a.careers?.includes('Other') ? 'Other' : ''].filter(Boolean).join(', ');
 
   const remove = async () => {
@@ -121,8 +129,8 @@ export default function ApplicationSheet({ app: a, dup, onClose, onStatus, onNot
           ['Board', a.board],
           ['School', a.school],
           ['Preferred batch', a.batch_location],
-          ['WhatsApp', pretty(a.student_phone)],
-          ['Email', a.student_email],
+          ['WhatsApp', a.student_phone && <span className="nw">{pretty(a.student_phone)}</span>],
+          ['Email', a.student_email && (() => { const [u, d] = a.student_email.split('@'); return d ? <span>{u}<wbr />@<span className="nw">{d}</span></span> : a.student_email; })()],
           ['Address', a.address],
           ['Blood group', a.blood_group],
           ['Hobby', a.hobby],

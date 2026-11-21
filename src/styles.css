@@ -715,6 +715,8 @@ input.bright::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; 
 .adm-row { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
 .adm-row:last-child { border-bottom: 0; }
 .adm-row .k { flex: none; width: 108px; font-size: 13px; color: var(--muted); }
+.adm-lines { display: flex; flex-direction: column; gap: 1px; }
+.adm-lines .nw, .adm-row .nw { white-space: nowrap; }
 .adm-row .v { flex: 1; min-width: 0; font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
 .adm-link { background: none; border: 0; padding: 0; color: var(--primary); font-size: 14px; font-weight: 700; text-decoration: underline; }
 .enroll-batch { position: relative; display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 0 16px; border-radius: 16px; border: 1px solid var(--field); background: #fff; cursor: pointer; }
