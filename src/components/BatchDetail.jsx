@@ -85,9 +85,9 @@ function useHoldMenu(open) {
   });
 }
 
-export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditStudent, onEditBatch, onAddStudent, onDeleteMany, onMoveMany, onTests, onStudentMenu }) {
+export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditStudent, onEditBatch, onAddStudent, onDeleteMany, onMoveMany, onTests, onStudentMenu, initialFilter }) {
   const fee = feeFor(v.batch, month);
-  const [filter, setFilterRaw] = useState('all');
+  const [filter, setFilterRaw] = useState(initialFilter || 'all');
   const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState(() => new Set());
   const wide = useWide();
@@ -150,14 +150,14 @@ export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditS
       </header>
 
       <div className="card summary">
-        <div>
+        <button type="button" className="sum-btn" disabled={!v.paidCount} aria-pressed={filter === 'paid'} onClick={() => setFilter(filter === 'paid' ? 'all' : 'paid')} aria-label="Collected. Show paid students.">
           <div className="k">Collected</div>
           <div className="v">{rupees(shownCollected)}</div>
-        </div>
-        <div className="r">
+        </button>
+        <button type="button" className="sum-btn r" disabled={!v.dueCount} aria-pressed={filter === 'due'} onClick={() => setFilter(filter === 'due' ? 'all' : 'due')} aria-label="Pending. Show students who still owe.">
           <div className="k">Pending</div>
           <div className="v">{rupees(shownPending)}</div>
-        </div>
+        </button>
       </div>
 
       <div className="chips" role="group" aria-label="Filter students">

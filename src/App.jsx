@@ -9,10 +9,12 @@ import ExamsSheet from './components/ExamsSheet';
 import Admissions from './components/Admissions';
 import AdmissionStats from './components/AdmissionStats';
 import StatFilterSheet from './components/StatFilterSheet';
+import StatList from './components/StatList';
+import PaidList from './components/PaidList';
 import ApplicationSheet from './components/ApplicationSheet';
 import ApplicationEdit from './components/ApplicationEdit';
 import EnrollSheet from './components/EnrollSheet';
-import { NO_FILTERS, STAT_FILTERS, loadApplications, loadDeletedApplications, newApplicantCount, possibleDuplicates, purgeApplication, restoreApplication, studentFromApplication, updateApplication } from './lib/admissions';
+import { NO_FILTERS, STAT_FILTERS, filterApplications, statApps, loadApplications, loadDeletedApplications, newApplicantCount, possibleDuplicates, purgeApplication, restoreApplication, studentFromApplication, updateApplication } from './lib/admissions';
 import { claimedStudents, finishClaim, loadLinked, sendReceipt, unreadCount } from './lib/telegram';
 import { currentMonth, longDateLabel, monthLabel, monthsBetween, todayISO } from './lib/dates';
 import { dueList, feeOn, monthView, staleSettled, withBatchMove, withFeeChange } from './lib/calc';
@@ -116,6 +118,11 @@ function Register() {
   useEffect(() => (sync ? sync.subscribe(setNet) : undefined), []);
   const [tab, setTab] = useState('overview');
   const [batchId, setBatchId] = useState(null);
+  const [batchFilter, setBatchFilter] = useState('all');
+  const openBatch = (id, filter = 'all') => {
+    setBatchFilter(filter);
+    setBatchId(id);
+  };
   // Admissions: a screen opened from the Tools list on Overview. Applications are loaded only when it opens.
   const [adm, setAdm] = useState(false);
   const [statFilters, setStatFilters] = useState(NO_FILTERS);
@@ -166,8 +173,8 @@ function Register() {
       const n = nav.current;
       let stillDeep = true;
       if (n.sheet) {
-        setSheet(n.sheet.from === 'settings' ? { type: 'settings' } : null);
-        stillDeep = n.sheet.from === 'settings' || n.tab !== 'overview' || !!n.batchId || n.adm;
+        setSheet(n.sheet.back ? n.sheet.back : n.sheet.from === 'settings' ? { type: 'settings' } : null);
+        stillDeep = !!n.sheet.back || n.sheet.from === 'settings' || n.tab !== 'overview' || !!n.batchId || n.adm;
       } else if (n.adm) {
         setAdm(false);
         stillDeep = n.tab !== 'overview';
@@ -386,7 +393,7 @@ function Register() {
 
   const close = () => setSheet(null);
   // sheets opened from Settings go back to Settings when closed
-  const closeBack = () => (sheet?.from === 'settings' ? setSheet({ type: 'settings' }) : setSheet(null));
+  const closeBack = () => (sheet?.back ? setSheet(sheet.back) : sheet?.from === 'settings' ? setSheet({ type: 'settings' }) : setSheet(null));
   const closeAfter = (promise) => promise.then((ok) => {
     if (ok) close();
     return ok;
@@ -444,6 +451,7 @@ function Register() {
         filters={statFilters}
         onFilter={(k) => setSheet({ type: 'statfilter', key: k })}
         onClear={() => setStatFilters(NO_FILTERS)}
+        onDrill={(d) => setSheet({ type: 'statlist', ...d })}
         onRetry={loadApps}
         onBack={() => setAdm(false)}
       />
@@ -467,6 +475,7 @@ function Register() {
     body = (
       <BatchDetail
         v={detail}
+        initialFilter={batchFilter}
         month={month}
         setMonth={setMonth}
         onBack={() => setBatchId(null)}
@@ -484,7 +493,7 @@ function Register() {
     body = (
       <Batches
         view={view}
-        onOpenBatch={setBatchId}
+        onOpenBatch={openBatch}
         onEditBatch={(batch) => setSheet({ type: 'batch', batch })}
         onNewBatch={newBatch}
       />
@@ -497,7 +506,7 @@ function Register() {
           month={month}
           setMonth={setMonth}
           isDemo={isDemo}
-          onOpenBatch={setBatchId}
+          onOpenBatch={openBatch}
           onNewBatch={newBatch}
           onImport={() => setSheet({ type: 'import' })}
           onReport={() => setSheet({ type: 'report' })}
@@ -505,6 +514,8 @@ function Register() {
           onRestoreFile={() => setSheet({ type: 'restore' })}
           onAdmissions={() => setAdm(true)}
           onAdmissionStats={() => setAdm('stats')}
+          onPaid={() => setSheet({ type: 'paidlist' })}
+          onDue={() => goTab('due')}
           newApps={newApps}
           onTrash={() => setSheet({ type: 'trash' })}
           onAppearance={() => setSheet({ type: 'appearance' })}
@@ -583,6 +594,8 @@ function Register() {
         />
       );
     }
+  } else if (sheet?.type === 'paidlist') {
+    sheetEl = <PaidList title={`Paid · ${monthLabel(month)}`} view={view} onClose={close} onOpen={(s) => setSheet({ type: 'history', studentId: s.id, back: sheet })} />;
   } else if (sheet?.type === 'history') {
     const student = data.students.find((s) => s.id === sheet.studentId);
     const batch = student && data.batches.find((b) => b.id === student.batch_id);
@@ -596,7 +609,7 @@ function Register() {
           tg={isDemo || !student.tg_token ? null : { count: tgLinked.get(student.id) || 0 }}
           onPay={(s, m) => openPay(s, m, true)}
           onEdit={(s) => setSheet({ type: 'student', student: s })}
-          onClose={close}
+          onClose={closeBack}
         />
       );
     }
@@ -631,13 +644,28 @@ function Register() {
         onHistory={(s) => setSheet({ type: 'history', studentId: s.id })}
       />
     );
+  } else if (sheet?.type === 'statlist' && apps) {
+    const list = statApps(filterApplications(apps, statFilters), { k: sheet.k, status: sheet.status });
+    const filterText = Object.entries(STAT_FILTERS)
+      .filter(([k]) => statFilters[k].length)
+      .map(([k, f]) => `${f.label}: ${statFilters[k].join(', ')}`)
+      .join(' · ');
+    sheetEl = (
+      <StatList
+        title={`${sheet.label}${sheet.month ? ' · ' + sheet.month : ''}`}
+        subtitle={`${list.length} applicant${list.length === 1 ? '' : 's'}${filterText ? ' · ' + filterText : ''}`}
+        apps={list}
+        onOpen={(id) => setSheet({ type: 'application', id, back: sheet })}
+        onClose={close}
+      />
+    );
   } else if (sheet?.type === 'application') {
     const a = apps?.find((x) => x.id === sheet.id);
     sheetEl = a ? (
       <ApplicationSheet
         app={a}
         dup={dups.has(a.id)}
-        onClose={close}
+        onClose={closeBack}
         onStatus={(st) => patchApp(a.id, { status: st })}
         onNote={(t) => patchApp(a.id, { notes: t })}
         onFollow={(patch) => patchApp(a.id, patch)}
@@ -645,14 +673,14 @@ function Register() {
           const ok = await patchApp(a.id, { deleted_at: new Date().toISOString() });
           if (ok) {
             setApps((list) => list.filter((x) => x.id !== a.id));
-            close();
+            closeBack();
             flash('Application deleted');
             refreshDelApps();
           }
           return ok;
         }}
-        onEdit={() => setSheet({ type: 'appedit', id: a.id })}
-        onEnroll={() => setSheet({ type: 'enroll', id: a.id })}
+        onEdit={() => setSheet({ type: 'appedit', id: a.id, back: sheet.back })}
+        onEnroll={() => setSheet({ type: 'enroll', id: a.id, back: sheet.back })}
         flash={flash}
       />
     ) : null;
@@ -689,12 +717,12 @@ function Register() {
     sheetEl = a ? (
       <ApplicationEdit
         app={a}
-        onClose={() => setSheet({ type: 'application', id: a.id })}
+        onClose={() => setSheet({ type: 'application', id: a.id, back: sheet.back })}
         onSave={async (patch) => {
           const ok = await patchApp(a.id, patch, 'Details saved');
           if (ok) {
             loadApps(); // the percentage is worked out by the database
-            setSheet({ type: 'application', id: a.id });
+            setSheet({ type: 'application', id: a.id, back: sheet.back });
           }
           return ok;
         }}
@@ -1003,7 +1031,17 @@ function Register() {
       </nav>
 
       <Leaving>{sheetEl}</Leaving>
-      {sheet?.type === 'report' && <Report view={view} month={month} onClose={close} />}
+      {sheet?.type === 'report' && (
+        <Report
+          view={view}
+          month={month}
+          onClose={close}
+          onOpenBatch={(id, f) => {
+            close();
+            openBatch(id, f);
+          }}
+        />
+      )}
       <Leaving ms={200}>
         {toast && (
           <div className="toast" role="status">

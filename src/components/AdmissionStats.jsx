@@ -2,7 +2,7 @@ import SettingsBtn from './SettingsBtn';
 import { Icon } from './Icons';
 import { filterApplications, monthlyRows, STAT_FILTERS, totals } from '../lib/admissions';
 
-export default function AdmissionStats({ apps, error, filters, onFilter, onClear, onRetry, onBack }) {
+export default function AdmissionStats({ apps, error, filters, onFilter, onClear, onDrill, onRetry, onBack }) {
   const shown = apps ? filterApplications(apps, filters) : [];
   const t = totals(shown);
   const rows = apps ? monthlyRows(shown, apps) : [];
@@ -59,21 +59,21 @@ export default function AdmissionStats({ apps, error, filters, onFilter, onClear
             )}
           </div>
 
-          <div className="st-sum" aria-label="Totals for the current filters">
-            <div>
+          <div className="st-sum" role="group" aria-label="Totals for the current filters. Tap a number to see who.">
+            <button className="st-box" disabled={!t.applied} onClick={() => onDrill({ label: 'Applied' })}>
               <b>{t.applied}</b>
               <span>Applied</span>
-            </div>
-            <div className="e">
+            </button>
+            <button className="st-box e" disabled={!t.enrolled} onClick={() => onDrill({ label: 'Enrolled', status: 'enrolled' })}>
               <b>{t.enrolled}</b>
               <span>Enrolled</span>
-            </div>
-            <div className="d">
+            </button>
+            <button className="st-box d" disabled={!t.dropped} onClick={() => onDrill({ label: 'Dropped', status: 'dropped' })}>
               <b>{t.dropped}</b>
               <span>Dropped</span>
-            </div>
+            </button>
           </div>
-          <p className="st-rate muted">{t.applied ? `${t.rate}% of these applicants enrolled` : 'No applicants match these filters'}</p>
+          <p className="st-rate muted">{t.applied ? `${t.rate}% of these applicants enrolled. Tap a number to see who.` : 'No applicants match these filters'}</p>
 
           <div className="card st-table" role="table" aria-label="Applications by month">
             <div className="st-tr st-th" role="row">
@@ -82,24 +82,31 @@ export default function AdmissionStats({ apps, error, filters, onFilter, onClear
               <span role="columnheader">Enrolled</span>
               <span role="columnheader">Dropped</span>
             </div>
-            {rows.map((r) => (
-              <div className="st-tr" role="row" key={r.k}>
-                <span role="cell" className="m">
-                  {r.label}
+            {rows.map((r) => {
+              const cell = (n, cls, status) => (
+                <span role="cell" className={(n ? cls : 'z') + (n ? ' go' : '')}>
+                  {n ? (
+                    <button type="button" className="st-cell" aria-label={`${n} ${status || 'applied'} in ${r.label}. Show who.`} onClick={() => onDrill({ label: status ? status[0].toUpperCase() + status.slice(1) : 'Applied', status, k: r.k, month: r.label })}>
+                      {n}
+                    </button>
+                  ) : (
+                    n
+                  )}
                 </span>
-                <span role="cell" className={r.applied ? '' : 'z'}>
-                  {r.applied}
-                </span>
-                <span role="cell" className={r.enrolled ? 'e' : 'z'}>
-                  {r.enrolled}
-                </span>
-                <span role="cell" className={r.dropped ? 'd' : 'z'}>
-                  {r.dropped}
-                </span>
-              </div>
-            ))}
+              );
+              return (
+                <div className="st-tr" role="row" key={r.k}>
+                  <span role="cell" className="m">
+                    {r.label}
+                  </span>
+                  {cell(r.applied, '', undefined)}
+                  {cell(r.enrolled, 'e', 'enrolled')}
+                  {cell(r.dropped, 'd', 'dropped')}
+                </div>
+              );
+            })}
           </div>
-          <p className="muted small st-note">Counted by the month the application came in.</p>
+          <p className="muted small st-note">Counted by the month the application came in. Tap any number to see those students.</p>
         </>
       )}
     </>

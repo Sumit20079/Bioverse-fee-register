@@ -175,7 +175,7 @@ export function totals(apps) {
 // The range comes from all applications, so it doesn't jump around when filters change.
 export function monthlyRows(filtered, all, now = new Date(), max = 24) {
   const key = (d) => d.getFullYear() * 12 + d.getMonth();
-  const first = all.length ? Math.min(...all.map((a) => key(new Date(a.created_at)))) : key(now);
+  const first = all.length ? Math.min(...all.map(monthIndex)) : key(now);
   const last = key(now);
   const rows = [];
   for (let k = last; k >= Math.max(first, last - max + 1); k--) {
@@ -184,7 +184,7 @@ export function monthlyRows(filtered, all, now = new Date(), max = 24) {
   }
   const byKey = new Map(rows.map((r) => [r.k, r]));
   for (const a of filtered) {
-    const r = byKey.get(key(new Date(a.created_at)));
+    const r = byKey.get(monthIndex(a));
     if (!r) continue;
     r.applied += 1;
     if (a.status === 'enrolled') r.enrolled += 1;
@@ -228,3 +228,11 @@ export async function shareForm(url = FORM_URL) {
     return e?.name === 'AbortError' ? 'cancelled' : 'unsupported';
   }
 }
+
+// Applications behind one number on the stats screen: optionally one month (the row's k) and one status.
+export const monthIndex = (a) => {
+  const d = new Date(a.created_at);
+  return d.getFullYear() * 12 + d.getMonth();
+};
+export const statApps = (filtered, { k, status } = {}) =>
+  filtered.filter((a) => (k == null || monthIndex(a) === k) && (!status || a.status === status));
