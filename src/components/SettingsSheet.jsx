@@ -19,12 +19,17 @@ export default function SettingsSheet({ onClose, onAppearance, onLock, lockCfg, 
       <div className="setgroup">
         <h3>General</h3>
         <Row icon={Icon.Palette} title="Appearance" sub="Colours, dark mode, outlines" onClick={onAppearance} />
-        {!isDemo && <Row icon={Icon.Chat} title="Telegram reminders" sub="Automatic fee reminders for parents" onClick={onReminders} />}
-        {!isDemo && <Row icon={Icon.Chat} title="Announcement" sub="One message to connected parents or a batch" onClick={onAnnounce} />}
-        {!isDemo && <Row icon={Icon.Chat} title="Payment claims" sub={claims ? `${claims} to check` : 'Parents who say they have paid'} onClick={onClaims} />}
-        {!isDemo && <Row icon={Icon.Chat} title="Parent messages" sub={unread ? `${unread} unread` : 'What parents type to the bot'} onClick={onMessages} />}
         <Row icon={Icon.Lock} title="App lock" sub={lockCfg ? 'On · asks for a PIN' : 'Off · ask for a PIN when the app opens'} onClick={onLock} />
       </div>
+      {!isDemo && (
+        <div className="setgroup">
+          <h3>Telegram</h3>
+          <Row icon={Icon.Chat} title="Telegram reminders" sub="Automatic fee reminders for parents" onClick={onReminders} />
+          <Row icon={Icon.Chat} title="Announcement" sub="One message to connected parents or a batch" onClick={onAnnounce} />
+          <Row icon={Icon.Chat} title="Payment claims" sub={claims ? `${claims} to check` : 'Parents who say they have paid'} onClick={onClaims} />
+          <Row icon={Icon.Chat} title="Parent messages" sub={unread ? `${unread} unread` : 'What parents type to the bot'} onClick={onMessages} />
+        </div>
+      )}
       <div className="setgroup">
         <h3>Your data</h3>
         {net && (
