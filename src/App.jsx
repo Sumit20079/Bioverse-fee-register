@@ -14,11 +14,11 @@ import PaidList from './components/PaidList';
 import ApplicationSheet from './components/ApplicationSheet';
 import ApplicationEdit from './components/ApplicationEdit';
 import EnrollSheet from './components/EnrollSheet';
-import { NO_FILTERS, STAT_FILTERS, filterApplications, statApps, loadApplications, loadDeletedApplications, newApplicantCount, possibleDuplicates, purgeApplication, restoreApplication, studentFromApplication, updateApplication } from './lib/admissions';
+import { NO_FILTERS, STAT_FILTERS, filterApplications, statApps, loadAllApplications, loadApplications, loadDeletedApplications, restoreApplications, applicationsCsvRows, newApplicantCount, possibleDuplicates, purgeApplication, restoreApplication, studentFromApplication, updateApplication } from './lib/admissions';
 import { claimedStudents, finishClaim, loadLinked, sendReceipt, unreadCount } from './lib/telegram';
 import { currentMonth, longDateLabel, monthLabel, monthsBetween, todayISO } from './lib/dates';
 import { dueList, feeOn, monthView, staleSettled, withBatchMove, withFeeChange } from './lib/calc';
-import { download, receiptContact, receiptText, waLink } from './lib/format';
+import { download, receiptContact, receiptText, toCsv, waLink } from './lib/format';
 import Login from './components/Login';
 import Overview from './components/Overview';
 import Batches from './components/Batches';
@@ -428,9 +428,15 @@ function Register() {
   const backup = async () => {
     try {
       const dump = await backend.backup();
-      const out = { app: 'bioverse-fee-register', version: 1, exported_at: new Date().toISOString(), ...dump };
+      // Applications live only on the server, so they are left out (with a note) when there is no connection.
+      let applications = null;
+      try {
+        if (navigator.onLine !== false) applications = await loadAllApplications();
+      } catch {}
+      const out = { app: 'bioverse-fee-register', version: 2, exported_at: new Date().toISOString(), ...dump, ...(applications ? { applications } : {}) };
       download(`fee-register-backup-${todayISO()}.json`, JSON.stringify(out, null, 2), 'application/json');
-      flash(`Backup saved: ${dump.students.length} students, ${dump.payments.length} payments`);
+      const base = `${dump.students.length} students, ${dump.payments.length} payments`;
+      flash(applications ? `Backup saved: ${base}, ${applications.length} applications` : `Backup saved: ${base}. Applications were left out (needs internet)`);
     } catch (e) {
       flash('Backup failed: ' + (e.message || e));
     }
@@ -457,7 +463,7 @@ function Register() {
       />
     );
   } else if (adm && tab === 'overview') {
-    body = <Admissions apps={apps} error={appsError} dups={dups} onRetry={loadApps} onBack={() => setAdm(false)} onOpen={(id) => setSheet({ type: 'application', id })} flash={flash} />;
+    body = <Admissions apps={apps} error={appsError} dups={dups} onCsv={() => { download(`admissions-${todayISO()}.csv`, toCsv(applicationsCsvRows(apps))); flash(`Saved ${apps.length} applications as a spreadsheet file`); }} onRetry={loadApps} onBack={() => setAdm(false)} onOpen={(id) => setSheet({ type: 'application', id })} flash={flash} />;
   } else if (tab === 'search') {
     body = (
       <Search
@@ -846,13 +852,27 @@ function Register() {
   } else if (sheet?.type === 'restore') {
     sheetEl = (
       <RestoreSheet
-        loadCurrent={() => backend.backup()}
+        loadCurrent={async () => {
+          const cur = await backend.backup();
+          try {
+            if (navigator.onLine !== false) cur.applications = await loadAllApplications();
+          } catch {}
+          return cur;
+        }}
         onClose={closeBack}
         onRestore={(plan) =>
           closeAfter(
             act(
-              () => backend.restore(plan),
-              `Restored ${plan.students.length} student${plan.students.length === 1 ? '' : 's'}, ${plan.payments.length} payment${plan.payments.length === 1 ? '' : 's'}`,
+              async () => {
+                await backend.restore(plan);
+                await restoreApplications(plan.applications || []);
+                if (plan.applications?.length) loadApps();
+              },
+              [
+                plan.students.length && `${plan.students.length} student${plan.students.length === 1 ? '' : 's'}`,
+                plan.payments.length && `${plan.payments.length} payment${plan.payments.length === 1 ? '' : 's'}`,
+                plan.applications?.length && `${plan.applications.length} application${plan.applications.length === 1 ? '' : 's'}`,
+              ].filter(Boolean).join(', ').replace(/^/, 'Restored ') ,
             ),
           )
         }

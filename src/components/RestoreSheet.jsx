@@ -44,20 +44,24 @@ export default function RestoreSheet({ loadCurrent, onRestore, onClose }) {
 
       {plan && plan.total === 0 && (
         <p role="status">
-          Nothing to restore. Everything in {name} ({plural(plan.inFile.students, 'student')}, {plural(plan.inFile.payments, 'payment')}) is already in the app.
+          Nothing to restore. Everything in {name} ({plural(plan.inFile.students, 'student')}, {plural(plan.inFile.payments, 'payment')}
+          {plan.appsInFile != null ? `, ${plural(plan.appsInFile, 'application')}` : ''}) is already in the app.
         </p>
       )}
+      {plan && plan.total === 0 && plan.appsUnchecked && <p className="hint">Admission applications weren&apos;t checked because there&apos;s no internet.</p>}
 
       {plan && plan.total > 0 && (
         <>
           <p role="status">
-            {name} has {plural(plan.inFile.students, 'student')} and {plural(plan.inFile.payments, 'payment')}. These are missing here and will be added:
+            {name} has {plural(plan.inFile.students, 'student')}, {plural(plan.inFile.payments, 'payment')}{plan.appsInFile != null ? ` and ${plural(plan.appsInFile, 'application')}` : ''}. These are missing here and will be added:
           </p>
           <ul className="namelist">
             {plan.batches.length > 0 && <li>{plural(plan.batches.length, 'batch')}</li>}
             {plan.students.length > 0 && <li>{plural(plan.students.length, 'student')}</li>}
             {plan.payments.length > 0 && <li>{plural(plan.payments.length, 'payment')}</li>}
+            {plan.applications.length > 0 && <li>{plural(plan.applications.length, 'admission application')}</li>}
           </ul>
+          {plan.appsUnchecked && <p className="hint">Admission applications in this file weren&apos;t checked because there&apos;s no internet. Restore again when online to bring them back.</p>}
           {plan.skipped > 0 && <p className="hint">{plural(plan.skipped, 'row')} in the file can&apos;t be restored because the student or batch they belong to isn&apos;t in the file.</p>}
           <button className="btn" disabled={busy} onClick={go}>
             {busy ? 'Restoring…' : 'Restore these'}
