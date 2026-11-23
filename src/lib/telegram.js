@@ -39,6 +39,15 @@ export async function sendNow() {
   return j;
 }
 
+// "Back up now": the server saves a backup to Supabase and sends it to Telegram, like it does every night.
+export async function backupNow() {
+  const { data } = await supabase.auth.getSession();
+  const r = await fetch('/api/backup', { method: 'POST', headers: { authorization: `Bearer ${data.session?.access_token}` } });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || `Server said ${r.status}`);
+  return j;
+}
+
 // After a payment is saved: tell the connected parent on Telegram. Best effort, never blocks or errors the app.
 export async function sendReceipt(payload) {
   try {

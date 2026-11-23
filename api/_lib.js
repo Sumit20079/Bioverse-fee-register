@@ -37,7 +37,7 @@ export async function db(method, path, body, extra = {}) {
   return text ? JSON.parse(text) : [];
 }
 
-async function all(table, owner) {
+export async function all(table, owner) {
   const out = [];
   for (let from = 0; ; from += 1000) {
     const rows = await db('GET', `${table}?select=*&owner_id=eq.${owner}&order=created_at.asc,id.asc`, undefined, { range: `${from}-${from + 999}`, 'range-unit': 'items' });
