@@ -119,6 +119,61 @@ export async function loadDeletedApplications() {
   return error ? [] : data;
 }
 
+// Every application, including the ones in Recently deleted, for the backup file. Throws if it can't be read.
+export async function loadAllApplications() {
+  const rows = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase.from('applications').select('*').order('created_at', { ascending: true }).range(from, from + 999);
+    if (error) throw error;
+    rows.push(...data);
+    if (data.length < 1000) return rows;
+  }
+}
+
+// Puts applications from a backup back. Only rows that are missing are added; owner becomes the signed-in teacher.
+export async function restoreApplications(rows) {
+  if (!rows.length) return;
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data?.user) throw error || new Error('Not signed in');
+  const owner_id = data.user.id;
+  for (let i = 0; i < rows.length; i += 100) {
+    check(await supabase.from('applications').upsert(rows.slice(i, i + 100).map((r) => ({ ...r, owner_id })), { onConflict: 'id', ignoreDuplicates: true }));
+  }
+}
+
+// A spreadsheet copy of the applications (opens in Excel / Google Sheets).
+const CSV_COLUMNS = [
+  ['Admission ID', (a) => a.admission_id],
+  ['Applied on', (a) => (a.created_at || '').slice(0, 10)],
+  ['Status', (a) => STATUS_LABEL[a.status] || a.status],
+  ['Student', (a) => a.student_name],
+  ['Gender', (a) => a.gender],
+  ['Class', (a) => a.class],
+  ['School', (a) => a.school],
+  ['Board', (a) => a.board],
+  ['Result', (a) => (a.result_total ? resultText(a) : '')],
+  ['Student phone', (a) => a.student_phone],
+  ['WhatsApp / email', (a) => a.student_email],
+  ['Address', (a) => a.address],
+  ['Father', (a) => a.father_name],
+  ['Father phone', (a) => a.father_phone],
+  ['Father profession', (a) => a.father_profession],
+  ['Mother', (a) => a.mother_name],
+  ['Mother phone', (a) => a.mother_phone],
+  ['Mother profession', (a) => a.mother_profession],
+  ['Main contact', (a) => (a.main_contact === 'father' ? 'Father' : a.main_contact === 'mother' ? 'Mother' : '')],
+  ['Careers', (a) => [...(a.careers || []), a.career_other].filter(Boolean).join('; ')],
+  ['Batch location', (a) => a.batch_location],
+  ['Referred from', (a) => a.referred_from],
+  ['Wants counselling', (a) => (a.wants_counselling ? 'Yes' : 'No')],
+  ['Counselling done', (a) => (a.counselling_done ? 'Yes' : 'No')],
+  ['Wants scholarship test', (a) => (a.wants_scholarship ? 'Yes' : 'No')],
+  ['Scholarship test done', (a) => (a.scholarship_done ? 'Yes' : 'No')],
+  ['Notes', (a) => a.notes],
+  ['Deleted', (a) => (a.deleted_at ? 'Yes' : '')],
+];
+export const applicationsCsvRows = (apps) => [CSV_COLUMNS.map(([h]) => h), ...apps.map((a) => CSV_COLUMNS.map(([, f]) => f(a) ?? ''))];
+
 export const restoreApplication = (id) => updateApplication(id, { deleted_at: null });
 
 // Delete forever: the row and its marksheet file.

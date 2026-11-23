@@ -39,7 +39,7 @@ function FormLink({ flash }) {
   );
 }
 
-export default function Admissions({ apps, error, dups, onRetry, onBack, onOpen, flash }) {
+export default function Admissions({ apps, error, dups, onCsv, onRetry, onBack, onOpen, flash }) {
   const [filter, setFilter] = useState('all');
   const [q, setQ] = useState('');
   const [cls, setCls] = useState('');
@@ -97,6 +97,11 @@ export default function Admissions({ apps, error, dups, onRetry, onBack, onOpen,
 
       <div style={{ padding: '0 20px' }}>
         <FormLink flash={flash} />
+        {apps && apps.length > 0 && (
+          <button type="button" className="sbtn" style={{ marginTop: 10 }} onClick={onCsv}>
+            Download as spreadsheet (CSV)
+          </button>
+        )}
       </div>
 
       {error && (
