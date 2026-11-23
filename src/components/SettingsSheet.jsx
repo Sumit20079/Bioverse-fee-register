@@ -2,7 +2,7 @@ import { Icon } from './Icons';
 import { useState } from 'react';
 import Sheet from './Sheet';
 
-export default function SettingsSheet({ onClose, onAppearance, onLock, lockCfg, onAbout, onBackup, onRestore, onTrash, trashCount, isDemo, isGuest, onExitDemo, onSignOut, net, onSyncNow, onReminders, onAnnounce, onMessages, unread, onClaims, claims }) {
+export default function SettingsSheet({ onClose, onAppearance, onLock, lockCfg, onAbout, onBackup, onRestore, onTrash, trashCount, isDemo, isGuest, onExitDemo, onSignOut, net, onSyncNow, onReminders, onAnnounce, onMessages, unread, onClaims, claims, onBackupNow }) {
   const [armed, setArmed] = useState(false);
   const Row = ({ icon: Ico, title, sub, onClick, danger }) => (
     <button className={'setrow' + (danger ? ' danger' : '')} onClick={onClick}>
@@ -28,6 +28,7 @@ export default function SettingsSheet({ onClose, onAppearance, onLock, lockCfg, 
           <Row icon={Icon.Chat} title="Announcement" sub="One message to connected parents or a batch" onClick={onAnnounce} />
           <Row icon={Icon.Chat} title="Payment claims" sub={claims ? `${claims} to check` : 'Parents who say they have paid'} onClick={onClaims} />
           <Row icon={Icon.Chat} title="Parent messages" sub={unread ? `${unread} unread` : 'What parents type to the bot'} onClick={onMessages} />
+          <Row icon={Icon.Download} title="Nightly backup" sub="Saved every night and sent to Telegram. Tap to back up now" onClick={onBackupNow} />
         </div>
       )}
       <div className="setgroup">

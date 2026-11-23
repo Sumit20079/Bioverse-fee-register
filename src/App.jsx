@@ -15,7 +15,7 @@ import ApplicationSheet from './components/ApplicationSheet';
 import ApplicationEdit from './components/ApplicationEdit';
 import EnrollSheet from './components/EnrollSheet';
 import { NO_FILTERS, STAT_FILTERS, filterApplications, statApps, loadAllApplications, loadApplications, loadDeletedApplications, restoreApplications, applicationsCsvRows, newApplicantCount, possibleDuplicates, purgeApplication, restoreApplication, studentFromApplication, updateApplication } from './lib/admissions';
-import { claimedStudents, finishClaim, loadLinked, sendReceipt, unreadCount } from './lib/telegram';
+import { backupNow, claimedStudents, finishClaim, loadLinked, sendReceipt, unreadCount } from './lib/telegram';
 import { currentMonth, longDateLabel, monthLabel, monthsBetween, todayISO } from './lib/dates';
 import { dueList, feeOn, monthView, staleSettled, withBatchMove, withFeeChange } from './lib/calc';
 import { download, receiptContact, receiptText, toCsv, waLink } from './lib/format';
@@ -900,6 +900,15 @@ function Register() {
         onAnnounce={() => setSheet({ type: 'announce', from: 'settings' })}
         onMessages={() => setSheet({ type: 'messages', from: 'settings' })}
         onClaims={() => setSheet({ type: 'claims', from: 'settings' })}
+        onBackupNow={async () => {
+          flash('Backing up…');
+          try {
+            const r = await backupNow();
+            flash(r.problems?.length ? `Backup problem: ${r.problems[0]}` : r.sent ? `Backed up and sent to Telegram (${r.line})` : r.saved ? `Backed up (${r.line}). Not sent to Telegram: no chat connected` : 'Backup did not save');
+          } catch (e) {
+            flash(`Backup failed: ${e.message || e}`);
+          }
+        }}
         claims={claimed.size}
         unread={unread}
       />
