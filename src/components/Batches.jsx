@@ -1,9 +1,11 @@
 import SettingsBtn from './SettingsBtn';
 import { Icon } from './Icons';
 import { rupees } from '../lib/format';
+import { useHoldMenu } from '../lib/useHoldMenu';
 
 // Manage list: open a batch, edit its fee, create a new one.
-export default function Batches({ view, onOpenBatch, onEditBatch, onNewBatch }) {
+export default function Batches({ view, onOpenBatch, onEditBatch, onNewBatch, onBatchMenu }) {
+  const hold = useHoldMenu((batch) => onBatchMenu?.(batch));
   return (
     <>
       <header className="head">
@@ -26,7 +28,7 @@ export default function Batches({ view, onOpenBatch, onEditBatch, onNewBatch }) 
       ) : (
         <div className="list" style={{ marginTop: 12 }}>
           {view.batches.map((v, i) => (
-            <div className="row rise" style={{ '--i': i }} key={v.batch.id}>
+            <div className="row rise" style={{ '--i': i }} key={v.batch.id} {...hold(v.batch)}>
               <button className="who" style={{ flex: 1 }} onClick={() => onOpenBatch(v.batch.id)}>
                 <div className="n">{v.batch.name}</div>
                 <div className="d">
