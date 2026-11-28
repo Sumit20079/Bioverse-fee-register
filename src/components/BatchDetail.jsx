@@ -6,6 +6,7 @@ import { dateLabel, monthShort } from '../lib/dates';
 import { feeFor } from '../lib/calc';
 import { rupees } from '../lib/format';
 import { useWide } from '../lib/useWide';
+import { useHoldMenu } from '../lib/useHoldMenu';
 
 // The button that shows (and opens) a month's payment status. It pops when the status changes,
 // not when the list first draws.
@@ -37,52 +38,6 @@ function StatusPill({ status, name, onClick }) {
       Mark paid
     </button>
   );
-}
-
-// Press and hold a student's name (or right-click it) to open the menu. A normal tap still opens Edit.
-function useHoldMenu(open) {
-  const t = useRef(null);
-  const start = useRef(null);
-  const fired = useRef(false);
-  const cancel = () => {
-    clearTimeout(t.current);
-    t.current = null;
-  };
-  return (student) => ({
-    onPointerDown: (e) => {
-      fired.current = false;
-      start.current = { x: e.clientX, y: e.clientY };
-      cancel();
-      t.current = setTimeout(() => {
-        fired.current = true;
-        navigator.vibrate?.(15);
-        open(student);
-      }, 500);
-    },
-    onPointerMove: (e) => {
-      const s = start.current;
-      if (t.current && s && Math.hypot(e.clientX - s.x, e.clientY - s.y) > 10) cancel();
-    },
-    onPointerUp: cancel,
-    onPointerCancel: cancel,
-    onPointerLeave: cancel,
-    onContextMenu: (e) => {
-      e.preventDefault();
-      cancel();
-      if (!fired.current) {
-        fired.current = true;
-        open(student);
-      }
-    },
-    // the tap that ends a long press must not also open Edit
-    onClickCapture: (e) => {
-      if (fired.current) {
-        e.stopPropagation();
-        e.preventDefault();
-        fired.current = false;
-      }
-    },
-  });
 }
 
 export default function BatchDetail({ v, month, setMonth, onBack, onPay, onEditStudent, onEditBatch, onAddStudent, onDeleteMany, onMoveMany, onTests, onStudentMenu, initialFilter }) {

@@ -35,6 +35,7 @@ import ImportSheet from './components/ImportSheet';
 import BulkDeleteSheet from './components/BulkDeleteSheet';
 import Trash from './components/Trash';
 import StudentMenu from './components/StudentMenu';
+import BatchMenu from './components/BatchMenu';
 import RestoreSheet from './components/RestoreSheet';
 import MoveSheet from './components/MoveSheet';
 import Leaving from './components/Leaving';
@@ -501,6 +502,7 @@ function Register() {
         view={view}
         onOpenBatch={openBatch}
         onEditBatch={(batch) => setSheet({ type: 'batch', batch })}
+        onBatchMenu={(batch) => setSheet({ type: 'bmenu', batch })}
         onNewBatch={newBatch}
       />
     );
@@ -521,6 +523,7 @@ function Register() {
           onAdmissions={() => setAdm(true)}
           onAdmissionStats={() => setAdm('stats')}
           onPaid={() => setSheet({ type: 'paidlist' })}
+          onBatchMenu={(batch) => setSheet({ type: 'bmenu', batch })}
           onDue={() => goTab('due')}
           newApps={newApps}
           onTrash={() => setSheet({ type: 'trash' })}
@@ -747,6 +750,7 @@ function Register() {
               })()
             : 0
         }
+        startConfirm={sheet.confirm}
         onClose={close}
         onSave={(b) => {
           // a changed fee on an existing batch is recorded from the chosen month, so earlier months keep theirs
@@ -760,6 +764,22 @@ function Register() {
             return undoable(ok, 'Batch deleted', () => backend.restoreBatch(id));
           })
         }
+      />
+    );
+  } else if (sheet?.type === 'bmenu') {
+    const b = sheet.batch;
+    sheetEl = (
+      <BatchMenu
+        batch={b}
+        students={data.students.filter((x) => x.batch_id === b.id).length}
+        onClose={close}
+        onOpen={() => {
+          close();
+          openBatch(b.id);
+        }}
+        onAdd={() => addStudent(b.id)}
+        onEdit={() => setSheet({ type: 'batch', batch: b })}
+        onDelete={() => setSheet({ type: 'batch', batch: b, confirm: true })}
       />
     );
   } else if (sheet?.type === 'smenu' && detail) {

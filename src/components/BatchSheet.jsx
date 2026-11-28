@@ -2,13 +2,13 @@ import { useState } from 'react';
 import Sheet from './Sheet';
 import { addMonths, currentMonth, monthLabel } from '../lib/dates';
 
-export default function BatchSheet({ batch, studentCount = 0, paymentCount = 0, onSave, onDelete, onClose }) {
+export default function BatchSheet({ batch, studentCount = 0, paymentCount = 0, onSave, onDelete, onClose, startConfirm }) {
   const editing = Boolean(batch);
   const [name, setName] = useState(batch?.name || '');
   const [fee, setFee] = useState(batch ? String(batch.fee) : '');
   const [from, setFrom] = useState(currentMonth());
   const [busy, setBusy] = useState(false);
-  const [confirming, setConfirming] = useState(false);
+  const [confirming, setConfirming] = useState(Boolean(startConfirm && batch));
 
   const changed = editing && fee !== '' && Math.round(Number(fee)) !== batch.fee;
   const fromOptions = Array.from({ length: 14 }, (_, i) => addMonths(currentMonth(), 1 - i)); // next month back to a year ago

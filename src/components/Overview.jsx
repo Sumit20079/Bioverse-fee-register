@@ -6,8 +6,10 @@ import { monthLabel } from '../lib/dates';
 import { feeFor } from '../lib/calc';
 import { rupees } from '../lib/format';
 import { useCountUp } from '../lib/useCountUp';
+import { useHoldMenu } from '../lib/useHoldMenu';
 
-export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, onNewBatch, onImport, onReport, onBackup, onRestoreFile, onTrash, onAppearance, trashCount, onSignOut, onAdmissions, onAdmissionStats, onPaid, onDue, newApps }) {
+export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, onNewBatch, onImport, onReport, onBackup, onRestoreFile, onTrash, onAppearance, trashCount, onSignOut, onAdmissions, onAdmissionStats, onPaid, onDue, newApps, onBatchMenu }) {
+  const hold = useHoldMenu((batch) => onBatchMenu?.(batch));
   const shownCollected = useCountUp(view.collected);
 
   return (
@@ -72,6 +74,7 @@ export default function Overview({ view, month, setMonth, isDemo, onOpenBatch, o
               tabIndex={0}
               className="card batch-card rise"
               style={{ '--i': i }}
+              {...hold(v.batch)}
               onClick={() => onOpenBatch(v.batch.id)}
               onKeyDown={(e) => e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onOpenBatch(v.batch.id))}
             >
